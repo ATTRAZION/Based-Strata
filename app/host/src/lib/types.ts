@@ -134,6 +134,7 @@ export interface ApiModel { id: string; name: string; contextMax?: number | null
 export interface ModelProviderPreset { id: string; name: string; baseUrl: string; protocol: ModelProtocol; baseUrlHint?: string }
 export interface ModelConnection {
   id: string; kind: 'provider' | 'custom'; provider: string | null; name: string;
+  managed?: boolean;
   baseUrl: string; protocol: ModelProtocol; reasoningFormat?: ModelReasoningFormat; apiKeySet: boolean; models: ApiModel[];
 }
 export interface ModelProviders { catalog: ModelProviderPreset[]; connections: ModelConnection[] }

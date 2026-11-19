@@ -26,6 +26,7 @@ function LegacyChatModelPicker() {
     const native = useNative();
     const library = useStore(s => s.library), hardware = useStore(s => s.hardware), engine = useStore(s => s.engine);
     const providers = useStore(s => s.providers), remote = useStore(s => s.remoteModel), streaming = useStore(s => s.streaming);
+    const basalt = useStore(s => s.basalt);
     const connection = providers?.connections.find(c => c.id === remote?.connectionId);
     const apiModel = connection?.models.find(m => m.id === remote?.modelId);
     const lifecycle = useLifecycle();
@@ -75,8 +76,11 @@ function LegacyChatModelPicker() {
       <span className="model-picker-state">{tr(state.label)}</span>
     </button>;
     }
+    // Basalt holds its model in memory by itself, and a chat that names no model is answered by it:
+    // the badge names that engine instead of saying nothing is loaded.
+    const engineName = basalt?.running && basalt?.loaded ? basalt.name : null;
     return <>
-    <button ref={trigger} className="chat-model-badge chat-model-picker" aria-label={tr("Choose model: {0}", [apiModel?.name ?? (running?.local ? running.name : running?.family) ?? 'No model loaded'])} title={tr(apiModel ? `${connection?.name} · ${apiModel.id}` : 'View and switch models')} disabled={!library && !providers} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(v => !v)}><Icon name={apiModel ? 'link' : modelFamilyIcon(running?.family ?? groups[0]?.family)} size={16}/><span>{tr(apiModel?.name ?? (running?.local ? running.name : running?.family) ?? groups[0]?.family ?? 'No model loaded')}</span><Icon name="chevron" size={12}/></button>
+    <button ref={trigger} className="chat-model-badge chat-model-picker" aria-label={tr("Choose model: {0}", [apiModel?.name ?? (running?.local ? running.name : running?.family) ?? engineName ?? 'No model loaded'])} title={tr(apiModel ? `${connection?.name} · ${apiModel.id}` : engineName ? 'The model this app runs by itself answers a chat that names no model' : 'View and switch models')} disabled={!library && !providers} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(v => !v)}><Icon name={apiModel ? 'link' : modelFamilyIcon(running?.family ?? groups[0]?.family)} size={16}/><span>{tr(apiModel?.name ?? (running?.local ? running.name : running?.family) ?? engineName ?? groups[0]?.family ?? 'No model loaded')}</span><Icon name="chevron" size={12}/></button>
     {tr(open ? <FloatingMenu anchor={trigger.current} title={tr("Models")} width={380} onClose={() => setOpen(false)}>
       {tr(native?.instances.filter(i => i.status !== 'error').map(i => <button key={i.id} className="menu__item" role="menuitem" disabled={streaming || i.status !== 'ready'} onClick={() => void nativeAction(`instances/${i.id}/default`).then(() => { selectRemoteModel(null); setOpen(false); }).catch(e => setError(e.message))}><Icon name="models"/><span>{tr(i.label)}<small>{tr(i.gpus.map(g => `GPU ${g + 1}`).join(" + ") || "Automatic GPU")}</small></span></button>))}<p className="model-picker-heading">{tr("Local models")}</p>
       {tr(installedNative.map(m => <button key={m.config || m.model} className="menu__item model-picker-option model-picker-api" role="menuitem" disabled={streaming} onClick={() => { setOpen(false); go('models'); }}><span><strong>{tr(m.model_name || m.model)}</strong><small>{tr("Downloaded, not loaded. Open Models to load it.")}</small></span></button>))}

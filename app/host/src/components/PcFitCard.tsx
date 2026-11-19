@@ -12,7 +12,7 @@ export interface PcLoaded { id: string; label: string; fit: Fit }
 function FreeMeter({ label, total, free }: { label: string; total: number; free: number }) {
   const used = total > 0 ? Math.max(0, Math.min(100, ((total - free) / total) * 100)) : 0;
   return <div className="pc-meter" data-low={free / (total || 1) < 0.1 || undefined}>
-    <div className="pc-meter__top"><span>{tr(label)}</span><b>{tr("{0} free", [gb(free)])}</b><span className="muted">{tr("of {0}", [gb(total)])}</span></div>
+    <div className="pc-meter__top"><span>{tr(label)}</span><div className="pc-meter__values"><b>{tr("{0} free", [gb(free)])}</b><span className="muted">{tr("of {0}", [gb(total)])}</span></div></div>
     <div className="pc-meter__track" role="img" aria-label={tr("{0}: {1} free of {2}", [tr(label), gb(free), gb(total)])}><i style={{ transform: `scaleX(${used / 100})` }}/></div>
   </div>;
 }

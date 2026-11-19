@@ -28,6 +28,9 @@ export function ContextPanel({ session, open, inline = false, onClose }: {
     const usageLabel = replies.some(m => m.usageSource === 'demo') ? 'Tokens in / out (example)' : 'Recorded tokens in / out';
     const requestSize = lastRequest?.inputTokens !== undefined && lastRequest.tokens !== undefined ? lastRequest.inputTokens + lastRequest.tokens : null;
     const model = library?.variants.find(v => v.id === library.loaded);
+    // An installation whose model engine is Basalt has no loaded library variant: the panel names the engine's model instead.
+    const basalt = useStore(s => s.basalt);
+    const engineName = model?.label ?? (basalt?.running ? basalt.name : null) ?? 'No model loaded';
     function change(key: string, value: boolean) {
         const next = { ...expanded, [key]: value };
         setExpanded(next);
@@ -42,7 +45,7 @@ export function ContextPanel({ session, open, inline = false, onClose }: {
         {tr(lastRequest?.skillsUsed?.length ? <p className="small">{tr("Instructions sent: ")}{tr(lastRequest.skillsUsed.join(', '))}.</p> : null)}
       </div></details>
       <details className="disclosure" open={!!expanded.tools} onToggle={e => change('tools', e.currentTarget.open)}><summary>{tr("Tool activity \u00B7 ")}{tr(calls.length)}</summary><div>{tr(calls.length ? calls.map(c => <div className="small" key={c.id}>{c.name} · {tr(c.state)}</div>) : <p className="small muted">{tr("No tool calls in this conversation.")}</p>)}<p className="xs muted">{tr("Tool execution is not connected in this build. Recorded proposals and approvals are examples. Availability does not grant permission.")}</p></div></details>
-      <details className="disclosure" open={!!expanded.engine} onToggle={e => change('engine', e.currentTarget.open)}><summary>{tr("Current engine")}</summary><div><p className="small">{tr(model?.label ?? 'No model loaded')}{tr(library?.mode === 'simulated' ? ' · Example' : '')}</p><p className="xs muted">{tr("The currently loaded model may differ from the model that answered earlier messages.")}</p><div className="row"><Btn size="sm" onClick={() => go('monitor')}>{tr("Monitor")}</Btn><Btn size="sm" onClick={() => go('tuning')}>{tr("Engine")}</Btn></div></div></details>
+      <details className="disclosure" open={!!expanded.engine} onToggle={e => change('engine', e.currentTarget.open)}><summary>{tr("Current engine")}</summary><div><p className="small">{tr(engineName)}{tr(library?.mode === 'simulated' ? ' · Example' : '')}</p><p className="xs muted">{tr("The currently loaded model may differ from the model that answered earlier messages.")}</p><div className="row"><Btn size="sm" onClick={() => go('monitor')}>{tr("Monitor")}</Btn><Btn size="sm" onClick={() => go('tuning')}>{tr("Engine")}</Btn></div></div></details>
     </div>
   </aside>;
     if (inline)

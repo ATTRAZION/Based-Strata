@@ -96,7 +96,7 @@ function providerHistory(history, protocol, vision, currentPictures) {
   }).filter(Boolean);
 }
 
-export function createModelProviders({ directory, changed = () => {}, fetchImpl = fetch, knownThinks = () => null }) {
+export function createModelProviders({ directory, changed = () => {}, fetchImpl = fetch, knownThinks = () => null, managed = null }) {
   mkdirSync(directory, { recursive: true });
   const file = join(directory, 'model-providers.json');
   let connections = [];

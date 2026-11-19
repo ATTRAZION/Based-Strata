@@ -15,7 +15,34 @@ import pic from '../locales/pic-ru.json';
 import gui from '../locales/gui-ru.json';
 import sav from '../locales/sav-ru.json';
 import net from '../locales/net-ru.json';
-export default {...base,...tune,...tools,...fix,...gh,...ui,...engine,...pick,...df2,...upd,...r3,...pic,...gui,...sav,...net,...dmg,...guic,...fixa,...gtui} as Record<string,string>;
+const basalt = {
+    'Starting Basalt…': 'Запуск Basalt…',
+    'Stopping Basalt…': 'Остановка Basalt…',
+    'Loading model weights…': 'Загрузка весов модели…',
+    'Ready. Model loads on the first message.': 'Готово. Модель загрузится по первому сообщению.',
+    'Prepare Basalt': 'Подготовить Basalt',
+    'Stop Basalt': 'Остановить Basalt',
+    'Configure Basalt': 'Настроить Basalt',
+    'Apply Basalt settings': 'Применить настройки Basalt',
+    'Save Basalt preset': 'Сохранить пресет Basalt',
+    'Basalt conversation context': 'Контекст диалога Basalt',
+    'Basalt drafting': 'Предсказание Basalt',
+    '384K extends the model with YaRN.': 'Для контекста 384K используется YaRN.',
+    'Apply the Basalt settings without loading weights, or load the model.': 'Можно применить настройки без загрузки весов или сразу загрузить модель.',
+    'Basalt RAM reserve (MiB)': 'Резерв ОЗУ для системы (МиБ)',
+    'Basalt VRAM reserve (MiB)': 'Резерв видеопамяти для системы (МиБ)',
+    'Unload after idle (seconds, 0 to disable)': 'Выгрузить при простое (секунды, 0 — отключить)',
+    'Start Basalt': 'Запустить Basalt',
+    'Basalt is already running.': 'Basalt уже запущен.',
+    'Basalt is not running.': 'Basalt не запущен.',
+    'Brings the model engine this app owns up': 'Запускает движок моделей, который это приложение ведёт само',
+    'Loading model into memory': 'Загрузка модели в память',
+    'Generating response': 'Генерация ответа',
+    'The model rests in memory': 'Модель отдыхает в памяти',
+    'The model is unloaded': 'Модель выгружена',
+    'The model this app runs by itself answers a chat that names no model': 'Модель, которую это приложение ведёт само, отвечает в чате, где модель не выбрана',
+};
+export default {...base,...tune,...tools,...fix,...gh,...ui,...engine,...pick,...df2,...upd,...r3,...pic,...gui,...sav,...net,...dmg,...guic,...fixa,...gtui,...basalt} as Record<string,string>;
 import dmg from '../locales/dmg-ru.json';
 import guic from '../locales/guic-ru.json';
 import fixa from '../locales/fixa-ru.json';

@@ -114,7 +114,7 @@ export function SettingsModels() {
     {tr(providers?.connections.length ? <div className="stack stack--sm">{tr(providers.connections.map(connection => <div className="st-card provider-card" key={connection.id}>
       <Icon name={connection.kind === 'custom' ? 'computer' : 'models'} size={22}/>
       <div className="provider-card__text"><strong>{connection.name}</strong><p className="small muted">{tr(connection.models.length)} {tr(connection.models.length === 1 ? 'model' : 'models')} · {tr(connection.apiKeySet ? 'API key saved' : 'No API key')}</p><p className="xs muted provider-address" title={connection.baseUrl}>{connection.baseUrl}</p></div>
-      <Btn size="sm" disabled={pending || fetching} onClick={() => edit(connection)} title={tr("Edit {0}", [connection.name])}>{tr("Edit")}</Btn>
+      {tr(connection.managed ? <span className="small muted">{tr("Managed in Models")}</span> : <Btn size="sm" disabled={pending || fetching} onClick={() => edit(connection)} title={tr("Edit {0}", [connection.name])}>{tr("Edit")}</Btn>)}
     </div>))}</div> : !draft ? <div className="provider-empty"><Icon name="models" size={26}/><strong>{tr("Add models to your chat picker")}</strong><p className="small muted">{tr("Your local model stays available. Add an API connection to use more models in Strata.")}</p></div> : null)}
     {tr(!draft ? <Btn icon="plus" block disabled={!providers} onClick={add}>{tr("Add model provider")}</Btn> : <div className="st-card provider-editor" ref={editor}>
       <div className="provider-kind" aria-label={tr("Connection type")}>

@@ -129,7 +129,20 @@ const hub = new EventHub();
 /** The chats, as files in the profile's data folder (chat-store.mjs). */
 const chatStore = createChatStore({ dir: store.DATA_DIR, privateDir: makePrivateDir });
 const helperRecords = createHelperRecords(chatStore.root);
-const modelProviders = createModelProviders({ directory: store.DATA_DIR, knownThinks: (connection, modelId) => visionProbe.knownThinks(connection, modelId), changed: value => hub.send('providers', withPictureAnswers(value)) });
+const basalt = createBasaltRuntime({
+  installFile: resolve(ROOT, '..', 'basalt-local.json'), dataDir: store.DATA_DIR,
+  strataInUse: () => agent.status().activeTurns > 0 || native.state().jobs.some(j => j.state === 'running') ||
+    serving.state().requests.some(r => r.state === 'queued' || r.state === 'generating'),
+  releaseStrata: async () => {
+    for (const instance of native.state().instances) await native.unload(instance.id);
+    if (models.REAL && models.library().loaded) { await models.unload(); runtimeState(); }
+  },
+  changed: value => hub.send('basalt', value),
+});
+/* Basalt answers for its own model, so the Monitor, the sidebar and the Models card read the same numbers the
+ * engine gives its own web page: the phase, the speed, the context, the last requests, the running totals. */
+if (basalt) monitor.setModelSource(() => basalt.telemetry());
+const modelProviders = createModelProviders({ directory: store.DATA_DIR, managed: basalt?.connection, knownThinks: (connection, modelId) => visionProbe.knownThinks(connection, modelId), changed: value => hub.send('providers', withPictureAnswers(value)) });
 const imageModels = createImageModels({ dataDir: store.DATA_DIR, modelsDir: () => store.MODELS_DIR, real: models.REAL, changed: value => hub.send('image-models', value) });
 /* The installed app ships Strata Control (python + strata_control) next to the host; a source checkout has none and keeps its older paths. */
 const CONTROL = findControl();
@@ -173,7 +186,13 @@ if (control) {
     return answer && !answer.usable && bundledWrongMake ? { ...answer, notice: bundledWrongMake, wrongMake: true } : answer;
   };
 }
-const native=createNativeControl({control,beforeUpdate:()=>agent.prepareForUpdate(),ready:bundledEngine,appUpdater,hardwareProbe:()=>(hardware.cachedHardware()?.gpus??[]).map((g,n)=>({index:g.index??n,vram_gb:g.vramGb})),directory:store.DATA_DIR,modelsDirectory:()=>store.MODELS_DIR,nativeDataDirectory:store.nativeDataDirectory,beforeLoad:async()=>{if(models.REAL&&models.library().loaded){if(serving.state().requests.some(r=>runtimeModels.state().instances.some(i=>i.id===r.instanceId)&&["queued","generating"].includes(r.state)))throw new Error("Finish requests before switching engines.");await models.unload();runtimeState();}},requests:()=>serving.state().requests,changed:value=>hub.send('native',value)});
+const native=createNativeControl({control,beforeUpdate:()=>agent.prepareForUpdate(),ready:bundledEngine,appUpdater,hardwareProbe:()=>(hardware.cachedHardware()?.gpus??[]).map((g,n)=>({index:g.index??n,vram_gb:g.vramGb})),directory:store.DATA_DIR,modelsDirectory:()=>store.MODELS_DIR,nativeDataDirectory:store.nativeDataDirectory,beforeLoad:async()=>{if(basalt)await stopBasalt();if(models.REAL&&models.library().loaded){if(serving.state().requests.some(r=>runtimeModels.state().instances.some(i=>i.id===r.instanceId)&&["queued","generating"].includes(r.state)))throw new Error("Finish requests before switching engines.");await models.unload();runtimeState();}},requests:()=>serving.state().requests,changed:value=>hub.send('native',value)});
+async function stopBasalt() {
+  if (basalt.available() && agent.status().activeTurns > 0) throw new Error('Finish the agent turn before switching engines.');
+  const result = await basalt.stop();
+  hub.send('providers', withPictureAnswers(modelProviders.list()));
+  return result;
+}
 /* The agent: chats become DeepSeek Harness sessions when that component is installed. It is a separate
    pinned component (STRATA_HARNESS_DIR), not part of this host, so its absence is a visible capability
    state and the chat falls back to the direct path with a notice, never silently to another model. */
@@ -613,7 +632,7 @@ async function runRemoteTurn({ selection, message, history, images = [], thinkin
     const appliedSkills = selectSkills(skillState, message, workspaceId);
     entry = serving.open({ client: 'Strata chat', endpoint: connection.protocol === 'anthropic' ? '/messages' : connection.protocol === 'openai-responses' ? '/responses' : '/chat/completions', model: `${connection.name} · ${model.name}`, cancel: () => controller.abort(new DOMException('Cancelled by the user', 'AbortError')) });
     serving.mark(entry.id, { state: 'generating' });
-    const result = await modelProviders.stream({ selection, message, history, images, thinking, signal: requestSignal, systemPrompt: ['You are Strata, a helpful assistant. Answer clearly. Do not claim to have read files or performed actions unless their results are included in the conversation.', userRules.promptBlock(), skillInstructions(appliedSkills)].filter(Boolean).join('\n\n'), onFrame: frame => {
+    const result = await modelProviders.stream({ selection, message, history, images, thinking, thinkingBudget, signal: requestSignal, systemPrompt: ['You are Strata, a helpful assistant. Answer clearly. Do not claim to have read files or performed actions unless their results are included in the conversation.', userRules.promptBlock(), skillInstructions(appliedSkills)].filter(Boolean).join('\n\n'), onFrame: frame => {
       if (frame.type === 'start') noteSkillUse(appliedSkills);
       if (frame.type === 'done') serving.mark(entry.id, { tokensIn: frame.tokensIn, tokensOut: frame.tokensOut, usageSource: frame.usageSource });
       onFrame({ ...frame, requestId: entry.id, model: model.name, contextMax: model.contextMax, remoteModel: true, ...(frame.type === 'start' ? { skills: appliedSkills.map(s => s.name) } : {}) });

@@ -650,7 +650,10 @@ function Composer({ draft, setDraft, loaded, streaming, onSubmit, onKey, session
     const clearDraft = useCallback(() => setDraft(''), [setDraft]);
     const photos = useChatPhotos(session?.id), native = useNative();
     const remotePick = useStore(s => s.remoteModel), remoteProviders = useStore(s => s.providers);
-    const canChat = hasModelToChat({ remote: chosenRemote(remoteProviders, remotePick), localLoaded: loaded, nativeReady: !!native?.instances.some(i => i.status === 'ready') });
+    // The engine this installation runs by itself (Basalt) holds its model in memory: a chat with no model
+    // picked is answered by it, so the composer is open.
+    const engineReady = useStore(s => s.basalt?.running === true && s.basalt?.loaded === true);
+    const canChat = hasModelToChat({ remote: chosenRemote(remoteProviders, remotePick), localLoaded: loaded || engineReady, nativeReady: !!native?.instances.some(i => i.status === 'ready') });
     const whileBusy = useStore(s => s.whileBusy), parkedList = useStore(s => (session ? s.parked[session.id] : undefined)) ?? NO_PARKED;
     const quoteList = useStore(s => (session ? s.quotes[session.id] : undefined)) ?? NO_QUOTES;
     // A command that runs at once (/compact, /website) clears only the "/..." the person typed to find it, never a message they were writing

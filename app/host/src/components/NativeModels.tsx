@@ -33,6 +33,7 @@ import { useStore } from '../lib/store';
 import { NativePresets } from './NativePresets';
 import { NativeTune } from './NativeTune';
 import { NativeTuneBadge } from './NativeTuneBadge';
+import { BasaltEngine } from './BasaltEngine';
 import { commitWarning } from '../lib/commit-warning';
 import { nativeCatalogModels, catalogVersionLabel, fetchesPictures, hasKvChoice, HY4_FAMILY, INKLING_FAMILY } from '../lib/native-catalog';
 export function NativeModels({ onOtherModels, onReady, onImport, onConnectEngine }: {

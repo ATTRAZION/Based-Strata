@@ -7133,8 +7133,10 @@ textarea {
 .pc-card { display: flex; flex-direction: column; gap: 18px; }
 .pc-card p { margin: 2px 0 0; }
 .pc-meter { display: flex; flex-direction: column; gap: 7px; }
-.pc-meter__top { display: flex; align-items: baseline; gap: 8px; font-size: var(--st-fs-sm); }
-.pc-meter__top span:first-child { font-weight: 700; margin-right: auto; }
+.pc-meter__top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: var(--st-fs-sm); }
+.pc-meter__top > span { font-weight: 700; }
+.pc-meter__values { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; gap: 2px 8px; min-width: 0; margin-inline-start: auto; }
+.pc-meter__values > * { white-space: nowrap; }
 .pc-meter__top b { font-size: var(--st-fs-lg); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
 .pc-meter__track { height: 10px; border-radius: var(--st-r-pill); background: var(--st-surface-2); border: 1px solid var(--st-line); overflow: hidden; }
 .pc-meter__track i { display: block; height: 100%; background: var(--st-accent); border-radius: var(--st-r-pill); }
@@ -7384,9 +7386,19 @@ textarea {
 .family-switch--single { padding: 7px 14px; font-weight: 700; border-color: transparent; background: transparent; }
 .native-model-layout--fit { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
 .native-model-layout--fit > .stack, .native-model-layout--fit > aside { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.native-choice__head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.native-choice__head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 6px; }
 .native-choice__label { font-size: var(--st-fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--st-ink-muted); }
-.native-choice__tools { margin-left: auto; display: inline-flex; gap: 8px; align-items: center; }
+.native-choice__tools { margin-inline-start: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; align-items: center; min-width: 0; max-width: 100%; }
+.native-choice__tools > .select { width: max-content; min-width: 0; max-width: 100%; }
+.native-choice__tools > .st-btn, .native-model-actions > .st-btn, .basalt-engine__package {
+  min-width: 0; max-width: 100%; height: auto; min-height: 36px; white-space: normal; overflow-wrap: anywhere;
+}
+.native-model-actions { flex-wrap: wrap; gap: 8px 12px; }
+.basalt-engine .basalt-engine__package { justify-content: flex-start; text-align: start; }
+.basalt-engine .native-choice__tools { margin-inline-start: 0; justify-content: flex-start; }
+.basalt-engine .native-model-actions {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch;
+}
 .native-choice__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 14px; margin-top: 14px; align-items: start; }
 .native-choice__col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .native-choice__col .native-resource-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -7456,8 +7468,8 @@ textarea {
 .plan__step[data-state="skipped"] .plan__text small { text-decoration: none; }
 
 /* Computer use: one compact segmented control on a single line (round 8, item 2) */
-.native-choice__col .native-resource-choice { display: inline-flex; align-self: flex-start; gap: 2px; padding: 3px; border: 1px solid var(--st-line); border-radius: 10px; background: var(--st-surface-2); max-width: 100%; }
-.native-choice__col .native-resource-choice button { min-height: 0; height: 30px; padding: 0 14px; border: 0; border-radius: 8px; background: transparent; box-shadow: none; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; font-size: var(--st-fs-sm); color: var(--st-ink-soft); }
+.native-choice__col .native-resource-choice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-self: flex-start; gap: 2px; padding: 3px; border: 1px solid var(--st-line); border-radius: 10px; background: var(--st-surface-2); max-width: 100%; }
+.native-choice__col .native-resource-choice button { min-width: 0; padding: 6px 10px; border: 0; border-radius: 8px; background: transparent; box-shadow: none; display: inline-flex; align-items: center; justify-content: center; text-align: center; white-space: normal; overflow-wrap: anywhere; font-size: var(--st-fs-sm); color: var(--st-ink-soft); }
 .native-choice__col .native-resource-choice button strong { font-weight: 600; font-size: inherit; }
 .native-choice__col .native-resource-choice button > svg, .native-choice__col .native-resource-choice button > span + svg { display: none; }
 .native-choice__col .native-resource-choice button[data-selected="true"] { background: var(--st-surface); color: var(--st-ink); box-shadow: var(--st-sh-card); }
@@ -7467,10 +7479,12 @@ textarea {
    16px lower, from the 16px top margin of the onboarding version of this control, and touched the separator under the row). They wrap
    below the dropdown only when the card is too narrow for both. */
 .native-choice__row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 20px; margin-bottom: 4px; }
-.native-choice__row > .native-choice__col:first-child { flex: 0 1 240px; min-width: 200px; }
+.native-choice__row > .native-choice__col:first-child { flex: 0 1 240px; min-width: min(200px, 100%); }
 .native-choice__row > .native-choice__col:last-child { flex: 0 1 auto; }
-.native-choice__col .native-resource-choice { margin-top: 0; height: 44px; box-sizing: border-box; align-items: center; align-self: flex-start; }
-.native-choice__col .native-resource-choice button { height: 36px; }
+.native-choice__col .native-resource-choice { margin-top: 0; min-height: 44px; box-sizing: border-box; align-items: stretch; }
+.native-choice__col .native-resource-choice button { min-height: 36px; }
+.basalt-engine .native-choice__row > .native-choice__col:not(:last-child) { flex: 1 1 200px; }
+.basalt-engine .native-choice__row > .native-choice__col:last-child { flex: 1 0 100%; }
 
 /* the version dropdown's chevron turns when it opens (round 8, item 7) */
 .version-trigger__chev { transition: transform var(--st-t-local) var(--st-ease-in-out); }
