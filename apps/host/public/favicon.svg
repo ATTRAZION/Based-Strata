@@ -1,6 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="3 3 42 42">
+<defs><linearGradient id="ember" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFC566"/><stop offset="0.55" stop-color="#F2662B"/><stop offset="1" stop-color="#C9461C"/></linearGradient></defs>
 <style>@media (prefers-color-scheme: dark) {.i { fill: #eef1f3; } .a { fill: #34d399; }}</style>
 <rect class="i" x="11" y="9" width="26" height="7" rx="3.5" fill="#221e1f" />
-<rect class="a" x="5" y="20.5" width="38" height="7" rx="3.5" fill="#10b981" />
+<rect class="a" x="5" y="20.5" width="30" height="7" rx="3.5" fill="#10b981" />
 <rect class="i" x="11" y="32" width="26" height="7" rx="3.5" fill="#221e1f" />
+<polygon points="44.5,24 41.75,19.24 36.25,19.24 33.5,24 36.25,28.76 41.75,28.76" fill="url(#ember)" />
 </svg>

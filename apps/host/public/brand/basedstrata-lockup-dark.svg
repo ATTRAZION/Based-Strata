@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="216" height="48" viewBox="0 0 216 48" role="img">
+<defs><linearGradient id="ember" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFC566"/><stop offset="0.55" stop-color="#F2662B"/><stop offset="1" stop-color="#C9461C"/></linearGradient></defs>
+<rect x="11" y="9" width="26" height="7" rx="3.5" fill="#eef1f3" />
+<rect x="5" y="20.5" width="30" height="7" rx="3.5" fill="#34d399" />
+<rect x="11" y="32" width="26" height="7" rx="3.5" fill="#eef1f3" />
+<polygon points="44.5,24 41.75,19.24 36.25,19.24 33.5,24 36.25,28.76 41.75,28.76" fill="url(#ember)" />
+<text x="58" y="32.5" textLength="150" lengthAdjust="spacingAndGlyphs" font-family="GT Walsheim Pro, Segoe UI, system-ui, sans-serif" font-size="25" font-weight="700" letter-spacing="0.3"><tspan fill="#ff7a3d">Based</tspan><tspan fill="#eef1f3">Strata</tspan></text>
+</svg>

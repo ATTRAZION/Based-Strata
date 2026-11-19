@@ -102,3 +102,10 @@
 .monitor-readings dd { margin: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 @media (max-width: 1100px) { .monitor-readings dl { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .monitor-readings { padding: 12px 16px; } .monitor-readings dl { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* The state card of an engine this build runs by itself (Basalt) wears Basalt's ember
+   instead of Strata's emerald, so a glance says whose numbers these are. */
+.monitor-state[data-engine='basalt'] .monitor-state__badges [data-phase='generating'],
+.monitor-state[data-engine='basalt'] .monitor-state__badges [data-phase='idle'][data-active='true'] { background: var(--st-ember-tint); color: var(--st-ember-text); border-color: transparent; }
+.monitor-state[data-engine='basalt'] .st-progress__bar { background: var(--st-ember); }
+.monitor-state[data-engine='basalt'] .monitor-bar-reading .num { color: var(--st-ember-text); }

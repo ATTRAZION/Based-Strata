@@ -76,7 +76,7 @@ function AppShell() {
       <Dialog open={settingsWanted && !!settingsCode} title={tr("Settings")} className="settings-dialog" onClose={closeSettings}>{settingsCode ? <settingsCode.SettingsScreen /> : null}</Dialog>
       <ShortcutsDialog />
       <FolderPathDialog />
-      {tr(setupShown ? (<div className="setupmodal" role="dialog" aria-modal="true" aria-label={tr("Set up Strata")}>
+      {tr(setupShown ? (<div className="setupmodal" role="dialog" aria-modal="true" aria-label={tr("Set up BasedStrata")}>
           <div className="scrim" data-open="true" aria-hidden="true"/>
           <div className="setupmodal__surface" ref={setupRef}>
             {setupCode ? <setupCode.SetupScreen /> : null}
