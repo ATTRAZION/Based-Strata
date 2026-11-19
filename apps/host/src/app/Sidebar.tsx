@@ -62,13 +62,18 @@ export function Sidebar({ containerRef }: {
     const menuTrigger = useRef<HTMLElement | null>(null);
     const current = library?.variants.find(v => v.id === library.loaded);
     const native = useNative(), nativeCurrent = native?.instances.find(i => i.id === native.defaultId);
-    const modelName = nativeCurrent?.label ?? (current?.local ? current.name : current?.family) ?? tr('No model loaded');
+    // A model this app serves through Basalt rather than Strata Control: the engine answers for itself, and the chip says so.
+    const basalt = useStore(s => s.basalt), engineModel = basalt?.running ? basalt : null;
+    const modelName = nativeCurrent?.label ?? (current?.local ? current.name : current?.family) ?? engineModel?.name ?? tr('No model loaded');
     // The version from the catalog and the card it runs on ("Q2_0 · GPU 2"), not the file id.
     const nativeSize = nativeCurrent ? native?.catalog?.families.flatMap(f => f.sizes).find(s => s.id === nativeCurrent.model) : undefined;
     const nativeSecond = nativeCurrent ? [nativeSize?.model ?? nativeCurrent.model.toUpperCase(), nativeCurrent.gpus.length ? nativeCurrent.gpus.map(g => `GPU ${g + 1}`).join(' + ') : ''].filter(Boolean).join(' · ') : null;
-    const modelQuant = nativeSecond ?? current?.quant ?? tr('View model versions');
-    const phase = nativeCurrent ? (nativeCurrent.status === 'ready' ? nativeCurrent.phase : nativeCurrent.status) : monitor?.phase ?? 'idle';
-    const status = phase === 'unavailable' ? 'Status unavailable' : phase === 'error' ? 'Error' : phase === 'loading' ? 'Loading' : !current && !nativeCurrent ? 'No model loaded' : phase === 'reading' ? 'Reading prompt' : phase === 'thinking' ? 'Thinking' : phase === 'generating' ? 'Generating' : 'Ready';
+    const modelQuant = nativeSecond ?? current?.quant ?? (engineModel ? `Basalt${engineModel.context ? ` ${Math.round(engineModel.context / 1024)}K` : ''}` : tr('View model versions'));
+    const phase = nativeCurrent ? (nativeCurrent.status === 'ready' ? nativeCurrent.phase : nativeCurrent.status)
+      : engineModel ? (engineModel.loading ? 'loading' : engineModel.state === 'generating' ? 'generating' : engineModel.state === 'reading' ? 'reading' : engineModel.loaded ? 'idle' : 'unloaded')
+      : monitor?.phase ?? 'idle';
+    const status = phase === 'unavailable' ? 'Status unavailable' : phase === 'error' ? 'Error' : phase === 'loading' ? 'Loading' : !current && !nativeCurrent && !engineModel ? 'No model loaded'
+      : phase === 'unloaded' ? 'Model unloaded' : phase === 'reading' ? 'Reading prompt' : phase === 'thinking' ? 'Thinking' : phase === 'generating' ? 'Generating' : 'Ready';
     // The model is busy with a chat that is not the one in front of the person: the chip says which one (a title, or how many).
     const awayChats = [...working].filter(id => !(location.route === 'chat' && id === activeSession));
     const awayTitle = awayChats.length === 1 ? sessions.find(s => s.id === awayChats[0]) : undefined;

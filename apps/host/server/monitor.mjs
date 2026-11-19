@@ -74,6 +74,54 @@ export function watch() {
   if (wasIdle) sensorsAt = 0;                                    // opening the Monitor after a quiet spell reads the card at once
 }
 export function setLiveProbe(probe) { liveProbe = typeof probe === 'function' ? probe : () => false; }
+/* An engine the host drives itself — Basalt — answers for its own model: /health and /metrics. The host
+ * asks it, and the reading below becomes the phase, the speed, the context and the request table the
+ * Monitor draws, so a model that runs outside Strata Control is not shown as "no model". */
+let modelSource = null, modelReading = null;
+export function setModelSource(source) { modelSource = typeof source === 'function' ? source : null; modelReading = null; }
+function readModel() {
+  try { return modelSource ? modelSource() : null; } catch { return null; }
+}
+/** One reading of the outside engine over the Monitor's own state; the hardware numbers stay the host's. */
+function applyModel(reading) {
+  modelReading = reading;
+  state.phase = reading.phase;
+  state.phaseLabel = reading.phaseLabel;
+  state.prompt = reading.prompt;
+  state.generation = reading.generation;
+  state.target.outputTps = reading.outputTps;
+  state.target.promptTps = reading.promptTps;
+  state.context.usedTokens = reading.context.usedTokens;
+  state.context.maxTokens = reading.context.maxTokens;
+  state.context.pct = reading.context.pct;
+  state.queue = reading.queue;
+  if (reading.expertCache) state.expertCache = reading.expertCache;
+  Object.assign(state.totals, reading.totals);
+  state.telemetry.throughput = reading.telemetry.throughput;
+  state.telemetry.context = reading.telemetry.context;
+}
+/** Back to the host's own words when the outside engine stops: the Monitor should not keep a dead model on screen. */
+function resetModel() {
+  modelReading = null;
+  state.phase = 'idle';
+  state.phaseLabel = 'Waiting for a request';
+  state.prompt = { done: 0, total: 0, pct: 0 };
+  state.generation = { done: null, total: null };
+  state.target.outputTps = 0;
+  state.target.promptTps = 0;
+  state.context.usedTokens = 0;
+  state.context.pct = 0;
+  state.queue = { running: 0, waiting: 0 };
+  state.expertCache = { used: 0, total: 64 };
+  state.telemetry.throughput = process.env.STRATA_REAL_ENGINE !== '1' ? 'demo' : 'none';
+  state.telemetry.context = 'unavailable';
+}
+/** The engine's own request list is the truth about finished requests; the host keeps the ones it is still serving. */
+function mergeRequests(own, external) {
+  const live = own.filter(r => ['queued', 'generating'].includes(r.state));
+  const finished = external.length ? [] : own.filter(r => !['queued', 'generating'].includes(r.state));
+  return [...external, ...live, ...finished].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 60);
+}
 let systemReading=null;
 /* CPU and SSD temperatures (null where this PC cannot give one) and the GPU energy used since the host started (#3628). */
 let temperatures={cpuTempC:null,ssdTempC:null};
@@ -128,7 +176,10 @@ function approach(current, target, factor = 0.22) {
 }
 
 function tick() {
-  const pace=sensorPace({live:supervisor.status().running||!!liveProbe(),watchedUntil});
+  const reading = readModel();
+  if (reading) applyModel(reading);
+  else if (modelReading) resetModel();
+  const pace=sensorPace({live:supervisor.status().running||!!liveProbe()||!!reading,watchedUntil});
   if(!sensorsPending&&Date.now()-sensorsAt>=pace.intervalMs){
     sensorsPending=true;sensorsAt=Date.now();
     const hardware=cachedHardware()??hwCache;
@@ -168,7 +219,7 @@ function tick() {
     }
     state.queue.running = engineMetrics.requestsProcessing || (busy ? 1 : 0);
     state.queue.waiting = engineMetrics.requestsDeferred || 0;
-  } else {
+  } else if (!reading) {
     state.telemetry.throughput = process.env.STRATA_REAL_ENGINE !== '1' ? 'demo' : 'none';
   }
 
@@ -206,12 +257,15 @@ function tick() {
     },
   ];
 
-  if (!engine.running) state.queue.running = busy ? 1 : 0;
+  if (!engine.running && !reading) state.queue.running = busy ? 1 : 0;
   state.context.pct = clamp((state.context.usedTokens / Math.max(state.context.maxTokens, 1)) * 100, 0, 100);
   hubRef?.send('monitor', snapshot());
 }
 
 export function snapshot() {
+  const fresh = readModel();
+  if (fresh) applyModel(fresh);
+  else if (modelReading) resetModel();
   const last = state.history.at(-1);
   const engine = supervisor.status();
   const engineMetrics = engine.metrics;
@@ -250,6 +304,13 @@ export function snapshot() {
       logCount: engine.logCount,
     },
   };
+  /* A model the host reaches through its own server (Basalt): its name, its request table and its parked
+   * conversations come from the engine, not from Strata Control. */
+  if (modelReading) {
+    result.model = modelReading.model;
+    result.conversationCache = modelReading.conversationCache ?? result.conversationCache;
+    result.requests = mergeRequests(servingState().requests, modelReading.requests ?? []);
+  }
   return engine.running&&engineMetrics.source==='engine'&&engineMetrics.dashboard?originalDashboard(engineMetrics.dashboard,cachedHardware()??hwCache,result):result;
 }
 

@@ -126,12 +126,14 @@ function FocusBar() {
     const library = useStore((s) => s.library);
     const monitor = useStore((s) => s.monitor);
     const model = library?.variants.find((v) => v.id === library.loaded) ?? null;
+    // The engine this app owns (Basalt) answers for its own model: the focus bar names it like a loaded one.
+    const basalt = useStore((s) => s.basalt), engineModel = basalt?.running ? basalt : null;
     const phase = nativeCurrent ? (nativeCurrent.status === 'ready' ? nativeCurrent.phase : nativeCurrent.status) : monitor?.phase ?? 'idle';
-    const state = ['error', 'unavailable'].includes(phase) ? 'idle' : phase === 'generating' || phase === 'reading' || phase === 'thinking' ? 'busy' : model || nativeCurrent ? 'ready' : 'idle';
+    const state = ['error', 'unavailable'].includes(phase) ? 'idle' : phase === 'generating' || phase === 'reading' || phase === 'thinking' ? 'busy' : model || nativeCurrent || engineModel ? 'ready' : 'idle';
     return (<div className="focusbar" data-state={state}>
       <span className="focusbar__dot"/>
       <span className="strong" style={{ color: 'var(--st-ink)' }}>
-        {tr(nativeCurrent?.label ?? model?.label ?? 'No model loaded')}
+        {tr(nativeCurrent?.label ?? model?.label ?? engineModel?.name ?? 'No model loaded')}
       </span>
       <span>
         {tr(phase === 'reading'

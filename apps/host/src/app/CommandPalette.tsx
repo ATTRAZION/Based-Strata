@@ -52,9 +52,12 @@ export function CommandPalette({ open }: {
     }, [open]);
     const activeId = useStore(s => s.activeSession);
     const sessionList = useStore(s => s.sessions);
+    // The engine an installation runs by itself (Basalt) can come up or down without any other state changing:
+    // its commands appear and disappear with it, so the list is rebuilt when it does.
+    const basalt = useStore(s => s.basalt);
     const commands = useMemo<Command[]>(() => getCommands()
         .filter(c => c.palette !== false && (!c.available || c.available()))
-        .map(c => ({ ...c, label: tr(c.label), hint: tr(c.hint), scope: 'command', keys: c.binding ? bindingKeys(c.binding, MOD) : undefined, run: () => runCommand(c) })), [library, theme, loaded, activeId, sessionList, bindings, language]);
+        .map(c => ({ ...c, label: tr(c.label), hint: tr(c.hint), scope: 'command', keys: c.binding ? bindingKeys(c.binding, MOD) : undefined, run: () => runCommand(c) })), [library, theme, loaded, activeId, sessionList, bindings, language, basalt]);
     const sessions = useStore((s) => s.sessions);
     const workspaces = useStore((s) => s.workspaces);
     // Conversations and workspaces are reachable from here so the palette is a

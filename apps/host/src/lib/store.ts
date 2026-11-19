@@ -24,6 +24,7 @@ import { photoData, uploadChatPhotos, photoHistorySlots, pendingChatPhotos, take
 import { applyNativeEvent, nativeState } from './native';
 import { pictureStatus } from './pictures';
 import { noModelNotice } from './no-model';
+import { basaltSummaryOf } from './basalt';
 import { taskHandoverMessage, taskHandoverTitle, chatHandoverMessage, chatHandoverTitle } from './task-handover';
 import type { Task } from './tasks';
 import { postWithFolderFallback } from './folder-pick';
@@ -53,6 +54,8 @@ import type {
   ModelProviders,
   ModelConnectionDraft,
   RemoteModelSelection,
+  BasaltState,
+  BasaltSummary,
   MonitorState,
   ServingState,
   Session,
@@ -115,6 +118,8 @@ export interface AppState {
   runtime: RuntimeModels | null;
   providers: ModelProviders | null;
   remoteModel: RemoteModelSelection | null;
+  /** The Basalt engine this app starts itself: the chip in the sidebar and the status line read it. Null when the app has none. */
+  basalt: BasaltSummary | null;
   engine: EngineConfig | null;
   serving: ServingState | null;
   monitor: MonitorState | null;
@@ -321,6 +326,8 @@ let state: AppState = {
   providers: null,
   /** The open chat's API model, or null for the local model (the default for every chat). */
   remoteModel: null,
+  /** What the managed Basalt engine is doing, or null when this app has no Basalt. */
+  basalt: null,
   engine: null,
   serving: null,
   monitor: null,
@@ -846,6 +853,9 @@ function applyEvent(e: StreamEvent) {
     case 'providers':
       applyProviders(data as unknown as ModelProviders);
       break;
+    case 'basalt':
+      set({ basalt: data as unknown as BasaltSummary });
+      break;
     case 'goal':
       if (typeof data.chatId === 'string') applyGoalFrame(data.chatId, data.goal);
       break;
@@ -929,6 +939,7 @@ export async function bootstrap() {
       providers: soft<ModelProviders>('/api/model-providers'),
       imageModels: soft<ImageModelLibrary>('/api/image-models'),
       runtime: soft<RuntimeModels>('/api/runtime'),
+      basalt: soft<BasaltState>('/api/basalt'),
     };
     const [setup, library, engine, serving, workspaceState] = await Promise.all([
       getWithRetry<SetupState>('/api/setup'),
@@ -954,6 +965,7 @@ export async function bootstrap() {
     void late.providers.then(providers => { if (providers) applyProviders(providers); });
     void late.imageModels.then(imageModels => { if (imageModels) set({ imageModels }); });
     void late.runtime.then(runtime => { if (runtime) set({ runtime }); });
+    void late.basalt.then(value => { const summary = basaltSummaryOf(value); if (summary) set({ basalt: summary }); });
     if (!shellAnnounced) { shellAnnounced = true; void announcePortNotice(); rememberShellLanguage(state.language); }
     closeEvents?.();
     let reconnect = false;
@@ -1078,6 +1090,24 @@ export async function unloadModel() {
     return true;
   } catch (err) { pushToast('error', 'Unload failed', err instanceof Error ? err.message : String(err)); return false; }
   finally { set(s => ({ busy: { ...s.busy, unload: false } })); }
+}
+
+/** Start or stop the Basalt engine this app owns. The Models card has the same buttons; the palette and shortcuts use this. */
+export async function runBasalt(action: 'start' | 'stop') {
+  set(s => ({ busy: { ...s.busy, basalt: true } }));
+  try {
+    const value = await api.post<BasaltState>(`/api/basalt/${action}`, {});
+    const summary = basaltSummaryOf(value);
+    if (summary) set({ basalt: summary });
+    return true;
+  } catch (e) { pushToast('error', 'Basalt', e instanceof Error ? e.message : String(e)); return false; }
+  finally { set(s => ({ busy: { ...s.busy, basalt: false } })); }
+}
+
+/** The engine this app owns has no one restart route: stop, then start; the start answer is the one that stands. */
+export async function restartBasalt() {
+  if (!await runBasalt('stop')) return false;
+  return await runBasalt('start');
 }
 
 export async function removeVariant(id: string) {
@@ -1970,9 +2000,12 @@ export async function sendMessage(text: string, options: { fromLoop?: boolean; g
   }
   // Whatever sent this (the box, a loop, a plan): with no model to answer, say so in plain words and start nothing.
   if (state.connection === 'live' && !reattach) {
+    // The engine this installation runs by itself (Basalt) holds its model in memory: a chat with no model
+    // picked has something to answer, so it is not a "no model" case.
+    const managedAnswers = state.basalt?.running === true && state.basalt?.loaded === true;
     // The first read of the engine's state has not come back yet: do not say "no model" about something not known yet, and do not send.
-    if (!nativeState() && !state.remoteModel && !state.library?.loaded) { pushToast('info', 'Still starting up', 'Strata is still checking your models. Try again in a moment.'); return; }
-    const why = noModelNotice(nativeState(), { remote: !!state.remoteModel, libraryLoaded: !!state.library?.loaded });
+    if (!nativeState() && !state.remoteModel && !state.library?.loaded && !managedAnswers) { pushToast('info', 'Still starting up', 'Strata is still checking your models. Try again in a moment.'); return; }
+    const why = noModelNotice(nativeState(), { remote: !!state.remoteModel, libraryLoaded: !!state.library?.loaded, managed: managedAnswers });
     if (why) { pushToast('info', why.title, why.message); return; }
   }
   const pictureCheck=pictureStatus(nativeState(),state.remoteModel,state.providers);

@@ -72,6 +72,7 @@ import { appVersionFrom, appVersionToShow } from './app-version.mjs';
 import { createImageModels } from './image-models.mjs';
 import { createRuntimeModels } from './runtime-models.mjs';
 import { createNativeControl } from './native-control.mjs';
+import { BASALT_ID, createBasaltRuntime } from './basalt-runtime.mjs';
 import { nativeUnloadPlan } from './storage-check.mjs';
 import { installBundledEngine, cleanupAfterInstall } from './bundled-engine.mjs';
 import { systemLocale } from './region.mjs';
@@ -123,7 +124,20 @@ const insideApp = path => { const rel = relative(ROOT, resolve(path)); return re
 const hub = new EventHub();
 /** The chats, as files in the profile's data folder (chat-store.mjs). */
 const chatStore = createChatStore({ dir: store.DATA_DIR, privateDir: makePrivateDir });
-const modelProviders = createModelProviders({ directory: store.DATA_DIR, knownThinks: (connection, modelId) => visionProbe.knownThinks(connection, modelId), changed: value => hub.send('providers', withPictureAnswers(value)) });
+const basalt = createBasaltRuntime({
+  installFile: resolve(ROOT, '..', 'basalt-local.json'), dataDir: store.DATA_DIR,
+  strataInUse: () => agent.status().activeTurns > 0 || native.state().jobs.some(j => j.state === 'running') ||
+    serving.state().requests.some(r => r.state === 'queued' || r.state === 'generating'),
+  releaseStrata: async () => {
+    for (const instance of native.state().instances) await native.unload(instance.id);
+    if (models.REAL && models.library().loaded) { await models.unload(); runtimeState(); }
+  },
+  changed: value => hub.send('basalt', value),
+});
+/* Basalt answers for its own model, so the Monitor, the sidebar and the Models card read the same numbers the
+ * engine gives its own web page: the phase, the speed, the context, the last requests, the running totals. */
+if (basalt) monitor.setModelSource(() => basalt.telemetry());
+const modelProviders = createModelProviders({ directory: store.DATA_DIR, managed: basalt?.connection, knownThinks: (connection, modelId) => visionProbe.knownThinks(connection, modelId), changed: value => hub.send('providers', withPictureAnswers(value)) });
 const imageModels = createImageModels({ dataDir: store.DATA_DIR, modelsDir: () => store.MODELS_DIR, real: models.REAL, changed: value => hub.send('image-models', value) });
 /* The installed app ships Strata Control (python + strata_control) next to the host; a source checkout has none and keeps its older paths. */
 const CONTROL = findControl();
@@ -134,7 +148,7 @@ if (control && process.platform === 'win32' && !process.env.STRATA_NO_REPAIR_ACC
 const appUi = createAppUi({ shutdown: () => shutdown() });
 /* The app's version has one source: the desktop shell passes it (STRATA_APP_VERSION, from apps/desktop/src-tauri/Cargo.toml). Outside the app it is read from the same file in a checkout, else 'dev'. */
 function appVersion() { return appVersionFrom({ env: process.env, here: HERE }); }
-const appUpdater = appUi.updater;
+const appUpdater = basalt ? null : appUi.updater;
 const shellNotifier = createShellNotifier();
 /** What the page needs for the desktop settings: whether this is the desktop app, the port in use, the saved choices and a busy-port notice. */
 function shellState() {
@@ -167,7 +181,13 @@ if (control) {
     return answer && !answer.usable && bundledWrongMake ? { ...answer, notice: bundledWrongMake, wrongMake: true } : answer;
   };
 }
-const native=createNativeControl({control,ready:bundledEngine,appUpdater,hardwareProbe:()=>(hardware.cachedHardware()?.gpus??[]).map((g,n)=>({index:g.index??n,vram_gb:g.vramGb})),directory:store.DATA_DIR,modelsDirectory:()=>store.MODELS_DIR,nativeDataDirectory:store.nativeDataDirectory,beforeLoad:async()=>{if(models.REAL&&models.library().loaded){if(serving.state().requests.some(r=>runtimeModels.state().instances.some(i=>i.id===r.instanceId)&&["queued","generating"].includes(r.state)))throw new Error("Finish requests before switching engines.");await models.unload();runtimeState();}},requests:()=>serving.state().requests,changed:value=>hub.send('native',value)});
+const native=createNativeControl({control,ready:bundledEngine,appUpdater,hardwareProbe:()=>(hardware.cachedHardware()?.gpus??[]).map((g,n)=>({index:g.index??n,vram_gb:g.vramGb})),directory:store.DATA_DIR,modelsDirectory:()=>store.MODELS_DIR,nativeDataDirectory:store.nativeDataDirectory,beforeLoad:async()=>{if(basalt)await stopBasalt();if(models.REAL&&models.library().loaded){if(serving.state().requests.some(r=>runtimeModels.state().instances.some(i=>i.id===r.instanceId)&&["queued","generating"].includes(r.state)))throw new Error("Finish requests before switching engines.");await models.unload();runtimeState();}},requests:()=>serving.state().requests,changed:value=>hub.send('native',value)});
+async function stopBasalt() {
+  if (basalt.available() && agent.status().activeTurns > 0) throw new Error('Finish the agent turn before switching engines.');
+  const result = await basalt.stop();
+  hub.send('providers', withPictureAnswers(modelProviders.list()));
+  return result;
+}
 /* The agent: chats become DeepSeek Harness sessions when that component is installed. It is a separate
    pinned component (STRATA_HARNESS_DIR), not part of this host, so its absence is a visible capability
    state and the chat falls back to the direct path with a notice, never silently to another model. */
@@ -557,7 +577,7 @@ function clientName(req) {
   return 'Local client';
 }
 
-async function runRemoteTurn({ selection, message, history, images = [], thinking, onFrame, signal, workspaceId }) {
+async function runRemoteTurn({ selection, message, history, images = [], thinking, thinkingBudget = 0, onFrame, signal, workspaceId }) {
   const controller = new AbortController();
   const requestSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
   let entry;
@@ -568,7 +588,7 @@ async function runRemoteTurn({ selection, message, history, images = [], thinkin
     const appliedSkills = selectSkills(skillState, message, workspaceId);
     entry = serving.open({ client: 'Strata chat', endpoint: connection.protocol === 'anthropic' ? '/messages' : connection.protocol === 'openai-responses' ? '/responses' : '/chat/completions', model: `${connection.name} · ${model.name}`, cancel: () => controller.abort(new DOMException('Cancelled by the user', 'AbortError')) });
     serving.mark(entry.id, { state: 'generating' });
-    const result = await modelProviders.stream({ selection, message, history, images, thinking, signal: requestSignal, systemPrompt: ['You are Strata, a helpful assistant. Answer clearly. Do not claim to have read files or performed actions unless their results are included in the conversation.', skillInstructions(appliedSkills)].filter(Boolean).join('\n\n'), onFrame: frame => {
+    const result = await modelProviders.stream({ selection, message, history, images, thinking, thinkingBudget, signal: requestSignal, systemPrompt: ['You are Strata, a helpful assistant. Answer clearly. Do not claim to have read files or performed actions unless their results are included in the conversation.', skillInstructions(appliedSkills)].filter(Boolean).join('\n\n'), onFrame: frame => {
       if (frame.type === 'start') noteSkillUse(appliedSkills);
       if (frame.type === 'done') serving.mark(entry.id, { tokensIn: frame.tokensIn, tokensOut: frame.tokensOut, usageSource: frame.usageSource });
       onFrame({ ...frame, requestId: entry.id, model: model.name, contextMax: model.contextMax, remoteModel: true, ...(frame.type === 'start' ? { skills: appliedSkills.map(s => s.name) } : {}) });
@@ -631,12 +651,16 @@ async function runAgentTurn({ res, controller, chatId, body, message, workspaceI
 }
 
 async function runTurn({ message, history = [], onFrame, signal, client, workspaceId = null, sessionId = null, remoteModel = null, runtimeModelId = undefined, nativeModelId, images=[], useTools=false, thinking='medium', thinkingBudget=0 }) {
-  if (remoteModel) return runRemoteTurn({ selection: remoteModel, message, history, images, thinking, onFrame, signal, workspaceId });
+  if (remoteModel) return runRemoteTurn({ selection: remoteModel, message, history, images, thinking, thinkingBudget, onFrame, signal, workspaceId });
   if(native.hasLive()||nativeModelId){
     let instance;try{instance=native.resolveInstance(nativeModelId??native.state().defaultId);}catch(e){const message=plainNoModel(e.message);onFrame({type:'error',message});return {error:message};}const started=Date.now(),cancel=new AbortController();
     const entry=serving.open({client:client??'Strata chat',endpoint:'/chat/completions',model:instance.apiModelId,instanceId:instance.id,gpuIds:instance.gpus.map(String),cancel:()=>cancel.abort()});
     try{serving.mark(entry.id,{state:'generating'});const applied=selectSkills(skillState,message,workspaceId);const result=await proxyCompletion({baseUrl:`http://127.0.0.1:${instance.port}/v1`,modelId:instance.apiModelId,authorization:instance.key,message,history,images,extra:{strata_mcp:useTools===true,...(thinkingBudget>0&&String(thinking).toLowerCase()!=='off'?{reasoning_budget_tokens:thinkingBudget}:{}),reasoning_effort:({off:'none',max:'high'}[String(thinking).toLowerCase()]??String(thinking).toLowerCase())},systemPrompt:[SYSTEM_PROMPT,skillInstructions(applied)].filter(Boolean).join('\n\n'),signal:signal?AbortSignal.any([signal,cancel.signal]):cancel.signal,onFrame:frame=>onFrame({...frame,requestId:entry.id,model:instance.label,contextMax:instance.metrics?.engine?.max_context??instance.context,skills:applied.map(s=>s.name)})});serving.mark(entry.id,{...result,usageSource:result.usageSource});serving.finish(entry.id,{tokensOut:result.tokensOut,durationMs:Date.now()-started});return result;}catch(e){serving.finish(entry.id,{durationMs:Date.now()-started,error:e.message});onFrame({type:'error',message:e.message,requestId:entry.id});return {error:e.message};}
   }
+  // Basalt keeps its model in memory by itself. A chat that was given no model of its own answers from it,
+  // the way the native engine answers when it has one loaded: the app works without a separate pick first.
+  const managedLive = basalt?.live?.();
+  if (managedLive?.loaded === true) return runRemoteTurn({ selection: { connectionId: BASALT_ID, modelId: basalt.modelId() }, message, history, images, thinking, thinkingBudget, onFrame, signal, workspaceId });
   runtimeState();
   let instance;
   try{instance=runtimeModels.resolve(runtimeModelId,{chatDefault:runtimeModelId===undefined});}
@@ -1085,6 +1109,23 @@ async function api(req, res, path, method, url) {
   // Credentials are handled only on the host. Responses and events expose a key-set flag.
   return error(res,404,'Unknown native control action.');}catch(e){return error(res,/Finish|Unload|running|current operation/.test(e.message)?409:400,e.message,{...(e.code&&typeof e.code==='string'?{code:e.code}:{}),...(e.details?{details:String(e.details)}:{})});}}
 
+  if (path === '/api/basalt' && method === 'GET') return json(res, 200, basalt ? await basalt.state() : { configured: false });
+  if (['/api/basalt/start', '/api/basalt/stop', '/api/basalt/settings', '/api/basalt/load'].includes(path) && method === 'POST') {
+    if (!basalt) return error(res, 404, 'Basalt has not been configured for this installation.');
+    const origin = req.headers.origin;
+    if (!req.headers['content-type']?.startsWith('application/json') ||
+        (origin && ![`http://127.0.0.1:${PORT}`, `http://localhost:${PORT}`].includes(origin))) {
+      return error(res, 403, 'Open Strata to switch engines.');
+    }
+    try {
+      if (path.endsWith('/stop')) return json(res, 200, await stopBasalt());
+      const result = path.endsWith('/settings') ? await basalt.configure(await readBody(req, 16384))
+        : path.endsWith('/load') ? await basalt.load() : await basalt.start();
+      hub.send('providers', withPictureAnswers(modelProviders.list()));
+      return json(res, 200, result);
+    }
+    catch (err) { return error(res, 409, err.message); }
+  }
   if (path === '/api/model-providers' && method === 'GET') return json(res, 200, withPictureAnswers(modelProviders.list()));
   if (path === '/api/model-providers/discover' && method === 'POST') {
     const body = await readBody(req);
@@ -1098,7 +1139,10 @@ async function api(req, res, path, method, url) {
     catch (err) { return error(res, 400, err.message); }
   }
   const providerMatch = /^\/api\/model-providers\/([a-zA-Z0-9-]+)$/.exec(path);
-  if (providerMatch && method === 'DELETE') return json(res, 200, withPictureAnswers(modelProviders.remove(providerMatch[1])));
+  if (providerMatch && method === 'DELETE') {
+    if (providerMatch[1] === BASALT_ID) return error(res, 409, 'Manage the Basalt engine in Models.');
+    return json(res, 200, withPictureAnswers(modelProviders.remove(providerMatch[1])));
+  }
 
   if(path === '/api/artifacts/open' && method === 'POST') {
     const body=await readBody(req, 30*1024*1024);
@@ -2035,6 +2079,7 @@ async function api(req, res, path, method, url) {
   // --- chat ---------------------------------------------------------------
   if ((path === '/api/chat/stream' || path === '/api/plan/start-goal') && method === 'POST') {
     const body = await readBody(req,12*1024*1024);
+    if (body.remoteModel?.connectionId === BASALT_ID && !basalt?.available()) return error(res, 409, 'Start Basalt in Models before using it in chat.');
     if (path === '/api/plan/start-goal') { body.message = '/plan start'; if (typeof body.planId !== 'string') return error(res, 400, 'planId is required'); }
     let images;try{const named=Array.isArray(body.imageIds)&&body.imageIds.length?uploads.dataUrls(typeof body.sessionId==='string'?body.sessionId:'',body.imageIds):[];images=validateChatImages([...(Array.isArray(body.images)?body.images:[]),...named]);}catch(e){return error(res,400,e.message);}
     if(images.length&&body.remoteModel){const own=modelProviders.withSecrets().find(c=>c.id===body.remoteModel.connectionId);const row=own?.models.find(m=>m.id===body.remoteModel.modelId);const refused=await pictureRefusal(own,row);if(refused)return error(res,409,refused);}
@@ -2328,7 +2373,7 @@ const shutdown = async () => {
   clearInterval(taskTimer);tasks.close();
   const timeout=setTimeout(()=>process.exit(0),control?45000:10000);timeout.unref();   // stopping an engine through Control: drained (15 s), then ended; the shell's deadline is longer
   server.close();server.closeAllConnections?.();
-  await Promise.allSettled([localShare.stop(),cloudflare.stop(),native.close(),agent.close()]);
+  await Promise.allSettled([localShare.stop(),cloudflare.stop(),native.close(),agent.close(),basalt?.close()]);
   process.exit(0);
 };
 // Every ordinary way of being told to stop takes the clean path: Ctrl+C, kill, the terminal closing (SIGHUP), Ctrl+Break.

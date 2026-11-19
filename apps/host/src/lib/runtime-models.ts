@@ -6,6 +6,9 @@ export function deviceLabel(ids:string[],hardware:Hardware|null){
 }
 export function scopedMonitor(live:MonitorState|null,runtime:RuntimeModels|null,id:string,requests:ServeRequest[]):MonitorState|null{
   if(!live || !runtime)return live;
+  // An installation whose model runs in an engine of its own (Basalt) has no Strata Control instance to scope by:
+  // the host already carries that engine's phase, speed, context and requests, so its numbers stand as they are.
+  if(!runtime.instances.length && live.model)return live;
   const selected=runtime.instances.find(i=>i.id===id);
   const entries=selected?[selected]:runtime.instances;
   const ids=new Set(entries.map(i=>i.id));

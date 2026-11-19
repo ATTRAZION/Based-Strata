@@ -131,10 +131,25 @@ export interface ApiModel { id: string; name: string; contextMax?: number | null
 export interface ModelProviderPreset { id: string; name: string; baseUrl: string; protocol: ModelProtocol; baseUrlHint?: string }
 export interface ModelConnection {
   id: string; kind: 'provider' | 'custom'; provider: string | null; name: string;
+  managed?: boolean;
   baseUrl: string; protocol: ModelProtocol; apiKeySet: boolean; models: ApiModel[];
 }
 export interface ModelProviders { catalog: ModelProviderPreset[]; connections: ModelConnection[] }
 export interface RemoteModelSelection { connectionId: string; modelId: string }
+/** The Basalt engine the app itself starts, as `GET /api/basalt` answers it (the Models card reads the whole thing). */
+export interface BasaltState {
+  configured: boolean; connectionId: string; action: string | null;
+  model: { id: string; name: string; contextMax: number; maxOutput?: number | null; vision: boolean; reasoning?: boolean | null };
+  settings: { context: number; drafting: string; profile: string; vision: boolean; ramReserve: number; vramReserve: number; idleUnload: number };
+  presets: { name: string; values: unknown }[]; contexts: number[]; pendingSettings: boolean; packagePath: string;
+  running: boolean; loaded: boolean; loading: boolean;
+  live?: { state: string; loaded: boolean; loading: boolean; outputTps: number; promptTps: number; usedTokens: number; maxTokens: number; queued: number; requests: number } | null;
+}
+/** The short answer the sidebar and the status line need, whichever way it came (the Models fetch or the host's event). */
+export interface BasaltSummary {
+  name: string; modelId: string | null; port: number | null; running: boolean; loaded: boolean; loading: boolean;
+  loadPercent?: number | null; state: string; context: number | null; vision: boolean; outputTps: number | null; usedTokens: number | null;
+}
 export interface ModelConnectionDraft {
   id?: string; kind: 'provider' | 'custom'; provider: string | null; name: string;
   baseUrl: string; protocol: ModelProtocol; apiKey: string; clearKey?: boolean; models: ApiModel[];
@@ -263,6 +278,8 @@ export interface MonitorSample {
 
 export interface MonitorState {
   telemetry?: { throughput: string; thermals: string; memory: string; system?:string; context?: string; ttftMs?: number | null };
+  /** A model the host reaches through an engine of its own (Basalt): named, but not a Strata Control instance. */
+  model?: { name: string; kind: string; running: boolean; loaded: boolean; loading: boolean; loadPercent?: number | null; state: string; port: number | null };
   phase: 'idle' | 'reading' | 'thinking' | 'generating' | 'loading' | 'error';
   phaseLabel: string;
   variantId: string | null;

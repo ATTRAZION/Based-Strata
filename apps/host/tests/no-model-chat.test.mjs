@@ -30,6 +30,7 @@ test('the composer\'s notice covers every state: downloading, loading, none, and
   assert.match(noModelNotice({ instances: [{ status: 'loading' }], jobs: [] }).message, /still loading/);
   assert.match(noModelNotice({ instances: [{ status: 'error' }, { status: 'stopped' }], jobs: [] }).title, /No model is loaded/, 'a model that failed or stopped cannot answer');
   assert.equal(noModelNotice({ instances: [{ status: 'loading' }, { status: 'ready' }], jobs: [] }), null);
+  assert.equal(noModelNotice({ instances: [], jobs: [] }, { managed: true }), null, 'the engine this installation runs by itself (Basalt) answers a chat that names no model');
 });
 
 test('sendMessage checks for a model before it adds the message, picks a chat or calls the host, and waits for the first read of the engine', async () => {
@@ -42,7 +43,7 @@ test('sendMessage checks for a model before it adds the message, picks a chat or
     const at = body.indexOf(later);
     assert.ok(at < 0 || at > guard, `${later} comes after the guard`);
   }
-  assert.match(body, /!nativeState\(\) && !state\.remoteModel && !state\.library\?\.loaded\) \{ pushToast\('info', 'Still starting up'/, 'before the first read of the engine nothing is claimed and nothing is sent');
+  assert.match(body, /!nativeState\(\) && !state\.remoteModel && !state\.library\?\.loaded && !managedAnswers\) \{ pushToast\('info', 'Still starting up'/, 'before the first read of the engine nothing is claimed and nothing is sent');
 });
 
 test('over HTTP, a chat with no model loaded gets one plain error and no reply', async t => {

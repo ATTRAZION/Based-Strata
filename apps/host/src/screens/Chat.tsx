@@ -332,6 +332,8 @@ export function ChatScreen() {
     const remote = useStore(s => s.remoteModel), providers = useStore(s => s.providers);
     const apiModel = providers?.connections.find(c => c.id === remote?.connectionId)?.models.find(m => m.id === remote?.modelId);
     const loaded = apiModel ?? library?.variants.find((v) => v.id === library.loaded) ?? null;
+    // Basalt keeps its model in memory by itself, and the host answers an unselected chat from it.
+    const managedReady = useStore(s => s.basalt?.running === true && s.basalt?.loaded === true);
     /**
      * Follow the stream only when the reader is already at the bottom. Scrolling
      * back through a long conversation should not be yanked forward by the next
@@ -474,7 +476,7 @@ export function ChatScreen() {
         }
         if (timeSkip === null) {
             // No model to answer: say so plainly (or show the download), and do not start a run.
-            const why = noModelNotice(chatNative ?? null, { libraryLoaded: !!loaded });
+            const why = noModelNotice(chatNative ?? null, { libraryLoaded: !!loaded, managed: managedReady });
             if (why) { pushToast('info', tr(why.title), tr(why.message)); return; }
         }
         updateDraft('');
@@ -615,7 +617,10 @@ function Composer({ draft, setDraft, loaded, streaming, onSubmit, onKey, session
 }) {
     const clearDraft = useCallback(() => setDraft(''), [setDraft]);
     const photos = useChatPhotos(session?.id), native = useNative();
-    const canChat = loaded || native?.instances.some(i => i.status === 'ready');
+    // The engine this installation runs by itself (Basalt) holds its model in memory: a chat with no model
+    // picked is answered by it, so the composer is open.
+    const engineReady = useStore(s => s.basalt?.running === true && s.basalt?.loaded === true);
+    const canChat = loaded || engineReady || native?.instances.some(i => i.status === 'ready');
     const whileBusy = useStore(s => s.whileBusy), parkedList = useStore(s => (session ? s.parked[session.id] : undefined)) ?? NO_PARKED;
     const quoteList = useStore(s => (session ? s.quotes[session.id] : undefined)) ?? NO_QUOTES;
     const commands = useSlashCommands(clearDraft, setDraft);

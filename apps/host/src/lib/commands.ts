@@ -5,7 +5,7 @@ import type { Route } from './router';
 import {
   exportConversation, getState, go, newSession, pushToast,
   selectSession,
-  restartEngine, setFocus, setNavOpen, setPalette, setShortcuts, setTheme,
+  restartEngine, restartBasalt, runBasalt, setFocus, setNavOpen, setPalette, setShortcuts, setTheme,
   toggleFocus, toggleRail, unloadModel,
 } from './store';
 import { recentChats } from './recent-chats';
@@ -45,8 +45,8 @@ export const APP_COMMANDS: AppCommand[] = [
   { id: 'settings', label: 'Settings', group: 'Session', key: ',', icon: 'settings', palette: false, run: () => go('settings') },
   { id: 'shortcuts', label: 'Keyboard shortcuts', keywords: 'keys bindings help', group: 'Session', key: '/', icon: 'bolt', run: () => setShortcuts(!getState().shortcutsOpen) },
   { id: 'dictation', label: 'Start or stop dictation', hint: 'Speak into the message box without sending', keywords: 'speech microphone voice transcribe', group: 'Session', key: 'd', shift: true, icon: 'mic', available: () => window.location.hash.startsWith('#/chat') && !getState().streaming, unavailable: 'Open a chat and wait for the current response to finish.', run: () => window.dispatchEvent(new Event('strata:dictation')) },
-  { id: 'restart', label: 'Restart engine', hint: 'Reloads the model into memory', keywords: 'reboot refresh', group: 'Engine', key: 'r', shift: true, icon: 'refresh', danger: true, run: () => void restartEngine() },
-  { id: 'unload', label: 'Unload model', hint: 'Frees model memory', keywords: 'eject stop vram', group: 'Engine', key: 'u', shift: true, icon: 'stop', danger: true, available: () => !!getState().library?.loaded, unavailable: 'No model is loaded.', run: () => void unloadModel() },
+  { id: 'restart', label: 'Restart engine', hint: 'Reloads the model into memory', keywords: 'reboot refresh', group: 'Engine', key: 'r', shift: true, icon: 'refresh', danger: true, run: () => void (getState().basalt ? restartBasalt() : restartEngine()) },
+  { id: 'unload', label: 'Unload model', hint: 'Frees model memory', keywords: 'eject stop vram', group: 'Engine', key: 'u', shift: true, icon: 'stop', danger: true, available: () => !!getState().library?.loaded || getState().basalt?.loaded === true, unavailable: 'No model is loaded.', run: () => void (!getState().library?.loaded && getState().basalt?.loaded ? runBasalt('stop') : unloadModel()) },
   { id: 'go:tuning', label: 'Model settings', group: 'Navigation', icon: 'engine', key: '5', alt: true, palette: false, slash: ['tune'], run: () => go('models') },
   { id: 'monitor', label: 'Open Monitor', group: 'Engine', key: 'm', shift: true, icon: 'activity', palette: false, run: () => go('monitor') },
   { id: 'focus', label: 'Focus on the conversation', group: 'Session', key: 'f', shift: true, icon: 'chat', run: () => { go('chat', getState().activeSession ?? undefined); toggleFocus(); } },
@@ -63,6 +63,11 @@ export function getCommands(): AppCommand[] {
     ...Array.from({ length: 6 }, (_, index) => ({ id: `chat:slot:${index + 1}`, label: `Chat ${index + 1}`, icon: 'chat' as const, group: 'Chat' as const, key: String(index + 1), hint: recentChats(state.sessions, state.activeSession)[index]?.title, available: () => !!recentChats(getState().sessions, getState().activeSession)[index], unavailable: 'No saved chat in this position.', run: () => { const session = recentChats(getState().sessions, getState().activeSession)[index]; if (session) { selectSession(session.id); go('chat', session.id); } } })),
     ...DESTINATIONS.map(d => ({ id: `go:${d.route}`, label: d.label, icon: d.icon, keywords: d.keywords, key: d.key, alt: true, group: 'Navigation' as const, slash: d.slash ? [d.slash] : undefined, run: () => go(d.route) })),
     { id: 'theme', label: dark ? 'Switch to light theme' : 'Switch to dark theme', keywords: 'appearance colours', icon: dark ? 'sun' : 'moon', group: 'Session', run: () => setTheme(dark ? 'light' : 'dark') },
+    // An installation whose model engine is Basalt owns that engine: the palette starts and stops it like a model load.
+    ...(state.basalt ? [
+      { id: 'basalt:start', label: 'Start Basalt', hint: 'Brings the model engine this app owns up', keywords: 'serve load memory basalt', group: 'Engine' as const, icon: 'play' as const, available: () => !getState().basalt?.running, unavailable: 'Basalt is already running.', run: () => void runBasalt('start') },
+      { id: 'basalt:stop', label: 'Stop Basalt', hint: 'Frees model memory', keywords: 'serve unload memory basalt', group: 'Engine' as const, icon: 'stop' as const, danger: true, available: () => !!getState().basalt?.running, unavailable: 'Basalt is not running.', run: () => void runBasalt('stop') },
+    ] : []),
 
   ];
   return commands.map(c=>({...c,binding:bindingFor(c.id,c.key?{key:c.key,mod:true,shift:!!c.shift,alt:!!c.alt}:null)}));

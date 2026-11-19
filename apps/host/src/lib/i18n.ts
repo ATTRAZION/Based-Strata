@@ -29,7 +29,17 @@ export type Language=typeof LANGUAGES[number]['value'];
 /* The Tune model dialog's strings live in tune-<lang>.json (apps/host/scripts/make-tune-locales.py) so other interface work does not collide with them. */
 /* The tool-server, picture and agent-result strings of the tools and images fixes live in tools-<lang>.json for the same reason. */
 /* The strings that had no key in the files above (#3479, #3825) and the 0.2.4.3 fixes live in fix-<lang>.json (scripts/make-fix-locales.py). */
-const english:Record<string,string>={...baseEnglish,...tune_en,...tools_en,...fix_en,...gh_en,...ui_en,...engine_en,...pick_en,...df2_en,...upd_en,...r3_en,...pic_en,...gui_en,...sav_en,...net_en};
+const basaltCopy = [
+ 'Starting Basalt…', 'Stopping Basalt…', 'Loading model weights…', 'Ready. Model loads on the first message.',
+ 'Prepare Basalt', 'Stop Basalt', 'Configure Basalt', 'Apply Basalt settings', 'Save Basalt preset',
+ 'Basalt conversation context', 'Basalt drafting', '384K extends the model with YaRN.',
+ 'Apply the Basalt settings without loading weights, or load the model.', 'Basalt RAM reserve (MiB)',
+ 'Basalt VRAM reserve (MiB)', 'Unload after idle (seconds, 0 to disable)',
+ // The same engine in the sidebar, the palette and the Monitor: these words come from the host's reading of /metrics.
+ 'Start Basalt', 'Basalt is already running.', 'Basalt is not running.', 'Brings the model engine this app owns up',
+ 'Loading model into memory', 'Generating response', 'The model rests in memory', 'The model is unloaded', 'The model this app runs by itself answers a chat that names no model',
+];
+const english:Record<string,string>={...baseEnglish,...tune_en,...tools_en,...fix_en,...gh_en,...ui_en,...engine_en,...pick_en,...df2_en,...upd_en,...r3_en,...pic_en,...gui_en,...sav_en,...net_en,...Object.fromEntries(basaltCopy.map(text=>[text,text]))};
 /* English is the key of every string, so it stays in the main file. The other eight languages are one file each, fetched the first time a language is used
    (the saved language before the first screen is drawn, a language picked later when it is picked): most people read one of the nine. */
 type Catalog=Record<string,string>;

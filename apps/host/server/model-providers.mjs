@@ -50,7 +50,7 @@ export function normalizeBaseUrl(value) {
 const publicConnection = ({ apiKey, ...connection }) => ({ ...connection, apiKeySet: !!apiKey });
 const numeric = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 
-export function createModelProviders({ directory, changed = () => {}, fetchImpl = fetch, knownThinks = () => null }) {
+export function createModelProviders({ directory, changed = () => {}, fetchImpl = fetch, knownThinks = () => null, managed = null }) {
   mkdirSync(directory, { recursive: true });
   const file = join(directory, 'model-providers.json');
   let connections = [];
@@ -60,7 +60,8 @@ export function createModelProviders({ directory, changed = () => {}, fetchImpl 
     if (!Array.isArray(saved)) fail('The model connections file is invalid.');
     connections = saved; makePrivate(file);
   }
-  function list() { return { catalog: PROVIDER_CATALOG, connections: connections.map(publicConnection) }; }
+  const allConnections = () => managed ? [...connections, managed] : connections;
+  function list() { return { catalog: PROVIDER_CATALOG, connections: allConnections().map(publicConnection) }; }
   function persist(next) {
     const temp = `${file}.${randomUUID()}.tmp`;
     writeFileSync(temp, JSON.stringify(next, null, 2), { mode: 0o600 });
@@ -97,9 +98,12 @@ export function createModelProviders({ directory, changed = () => {}, fetchImpl 
     if (!connection.models.length) fail('Choose at least one model or add its ID.');
     return persist(connections.some(c => c.id === connection.id) ? connections.map(c => c.id === connection.id ? connection : c) : [...connections, connection]);
   }
-  function remove(id) { return persist(connections.filter(c => c.id !== id)); }
+  function remove(id) {
+    if (managed && id === managed.id) fail('Manage the Basalt engine in Models.');
+    return persist(connections.filter(c => c.id !== id));
+  }
   function resolve(selection) {
-    const connection = connections.find(c => c.id === selection?.connectionId);
+    const connection = allConnections().find(c => c.id === selection?.connectionId);
     const model = connection?.models.find(m => m.id === selection?.modelId);
     if (!connection || !model) fail('This API model is no longer available. Choose another model in the chat picker.');
     return { connection, model };
@@ -143,7 +147,7 @@ export function createModelProviders({ directory, changed = () => {}, fetchImpl 
     const models = [...new Map(rows.filter(m => text(m.id, 256)).map(m => [m.id, { id: text(m.id, 256), name: text(m.display_name ?? m.name) || text(m.id, 256), contextMax: numeric(m.context_length ?? m.max_context_length ?? m.context_window), maxOutput: numeric(m.max_output_tokens ?? m.max_completion_tokens ?? m.top_provider?.max_completion_tokens), vision: modelReadsPictures(m), reasoning: modelSupportsReasoning(m) }])).values()];
     return { models: models.sort((a, b) => a.name.localeCompare(b.name)) };
   }
-  async function stream({ selection, message, history = [], systemPrompt = '', images = [], thinking, signal, onFrame }) {
+  async function stream({ selection, message, history = [], systemPrompt = '', images = [], thinking, thinkingBudget = 0, signal, onFrame }) {
     const { connection, model } = resolve(selection);
     const started = Date.now();
     const messages = history.filter(m => ['user', 'assistant'].includes(m.role) && typeof m.content === 'string').slice(-40).map(m => ({ role: m.role, content: m.content }));
@@ -155,12 +159,17 @@ export function createModelProviders({ directory, changed = () => {}, fetchImpl 
       ? { model: model.id, messages, system: systemPrompt, max_tokens: 8192, stream: true }
       : protocol === 'openai-responses'
         ? { model: model.id, input: messages, instructions: systemPrompt, stream: true, store: false }
-        : { model: model.id, messages: [...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []), ...messages], stream: true, ...(['openai', 'deepseek', 'openrouter', 'google', 'moonshotai'].includes(connection.provider) ? { stream_options: { include_usage: true } } : {}) };
+      : { model: model.id, messages: [...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []), ...messages], stream: true, ...(connection.managed || ['openai', 'deepseek', 'openrouter', 'google', 'moonshotai'].includes(connection.provider) ? { stream_options: { include_usage: true } } : {}) };
     // Match the native composer's effort names. Unknown support and other protocols keep provider defaults.
     const choice = typeof thinking === 'string' ? thinking.toLowerCase() : '';
     if (protocol === 'openai-chat' && (model.reasoning ?? knownThinks(connection, model.id)) === true && ['off', 'low', 'medium', 'high', 'max'].includes(choice)) {
       if (isOpenRouter(connection)) payload.reasoning = { effort: OPENROUTER_EFFORTS[choice] };
       else payload.reasoning_effort = ({ off: 'none', max: 'high' })[choice] ?? choice;
+    }
+    /* The engine this app starts itself takes the composer's thinking budget in tokens, exactly as the native model does
+     * (basalt-runtime.mjs starts it); a distant API has no such field, so there only the effort is sent. */
+    if (protocol === 'openai-chat' && connection.managed === true && Number.isFinite(thinkingBudget) && thinkingBudget > 0 && choice !== 'off') {
+      payload.reasoning_budget_tokens = Math.min(Math.round(thinkingBudget), 262144);
     }
     const requestSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(10 * 60 * 1000)]) : AbortSignal.timeout(10 * 60 * 1000);
     const res = await request(connection, protocol === 'anthropic' ? 'messages' : protocol === 'openai-responses' ? 'responses' : 'chat/completions', { method: 'POST', body: JSON.stringify(payload), signal: requestSignal });
@@ -228,6 +237,6 @@ export function createModelProviders({ directory, changed = () => {}, fetchImpl 
     onFrame({ type: 'done', ...result }); return result;
   }
   /** Connections WITH their keys, for the host's own agent bridge only; never serialised to a client. */
-  function withSecrets() { return connections.map(c => ({ ...c, models: c.models.map(m => ({ ...m })) })); }
+  function withSecrets() { return allConnections().map(c => ({ ...c, models: c.models.map(m => ({ ...m })) })); }
   return { list, save, remove, discover, resolve, stream, withSecrets };
 }
