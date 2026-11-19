@@ -26,6 +26,10 @@ export function createBasaltRuntime({ installFile, dataDir, releaseStrata, strat
   }
   const settingsFile = join(dataDir, 'basalt-settings.json');
   const runConfig = join(dataDir, 'basalt-run.json');
+  const logFile = join(dataDir, 'managed-basalt.log');
+  const pythonPath = getPath(local.python);
+  const releasePath = getPath(local.release);
+  const enginePath = join(releasePath, 'bin', 'basalt.exe');
   const defaults = initialSettings(config);
   let saved = readSettings(settingsFile, defaults);
   let runningSettings = null;
@@ -92,6 +96,9 @@ export function createBasaltRuntime({ installFile, dataDir, releaseStrata, strat
     return { configured: true, connectionId: BASALT_ID, model: connection.models[0], action,
       settings: saved.values, presets: saved.presets, contexts: CONTEXTS, pendingSettings: pendingSettings(),
       packagePath: resolve(dirname(configPath), model.model),
+      // What this app knows about the engine it runs itself: where its files are and the version it answered with.
+      info: { port, version: reading?.version ?? null, release: releasePath, engine: enginePath, python: pythonPath,
+        logFile, settingsFile, runConfig, configPath },
       live: liveValue(),
       running: !!child && h?.service === 'basalt', loaded: h?.loaded === true, loading: h?.loading === true };
   }
@@ -130,9 +137,7 @@ export function createBasaltRuntime({ installFile, dataDir, releaseStrata, strat
     await exclusive('starting', async () => {
       if (child && !pendingSettings()) return;
       if (strataInUse()) throw new Error('Finish the current operation before applying Basalt settings.');
-      const python = getPath(local.python);
-      const release = getPath(local.release);
-      const engine = join(release, 'bin', 'basalt.exe');
+      const python = pythonPath, release = releasePath, engine = enginePath;
       for (const [path, label] of [[python, 'Python'], [engine, 'Basalt'], [resolve(dirname(configPath), model.model), 'The Basalt model']]) {
         if (!existsSync(path)) throw new Error(`${label} was not found at ${path}.`);
       }
@@ -141,7 +146,7 @@ export function createBasaltRuntime({ installFile, dataDir, releaseStrata, strat
       mkdirSync(dataDir, { recursive: true });
       const values = saved.values;
       writeFileSync(runConfig, JSON.stringify(runConfiguration(config, configPath, values), null, 2) + '\n');
-      const log = openSync(join(dataDir, 'managed-basalt.log'), 'a');
+      const log = openSync(logFile, 'a');
       let proc;
       try {
         proc = spawn(python, ['-u', bridge, release, '--engine-bin', engine, '--config', runConfig,

@@ -142,6 +142,8 @@ export interface BasaltState {
   model: { id: string; name: string; contextMax: number; maxOutput?: number | null; vision: boolean; reasoning?: boolean | null };
   settings: { context: number; drafting: string; profile: string; vision: boolean; ramReserve: number; vramReserve: number; idleUnload: number };
   presets: { name: string; values: unknown }[]; contexts: number[]; pendingSettings: boolean; packagePath: string;
+  /** Where this app keeps the engine, and the version it answered with (null until it has). Settings shows it; the app never guesses it. */
+  info?: { port: number; version: string | null; release: string; engine: string; python: string; logFile: string; settingsFile: string; runConfig: string; configPath: string } | null;
   running: boolean; loaded: boolean; loading: boolean;
   live?: { state: string; loaded: boolean; loading: boolean; outputTps: number; promptTps: number; usedTokens: number; maxTokens: number; queued: number; requests: number } | null;
 }

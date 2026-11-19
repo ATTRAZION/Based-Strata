@@ -82,6 +82,9 @@ export function basaltReading({ metrics, health, label }) {
   const latencies = requests.map(row => row.durationMs).filter(value => value > 0);
 
   const reading = {
+    // The engine names its own version in /metrics (`engine.version`, from its BUILD.json). Settings shows it
+    // when the engine is up; until then there is nothing to show, so it stays null rather than a guessed number.
+    version: typeof engine.version === 'string' ? engine.version : null,
     model: {
       name: label, kind: 'basalt', running: true, port: null,
       loaded: health?.loaded === true, loading: health?.loading === true,

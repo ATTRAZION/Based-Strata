@@ -46,6 +46,9 @@ const basaltCopy = [
   'Set up BasedStrata', 'Welcome to BasedStrata', 'A quick tour of BasedStrata', 'Message BasedStrata', 'Message BasedStrata…',
   'Connect BasedStrata to an app', 'Notify me when BasedStrata needs an answer',
   'In Manual mode, shows a desktop notification when the assistant waits for your approval and BasedStrata is in the background.',
+  // Settings > Engine: the read-only card that answers what the Basalt engine is and where its files live.
+  'Open in Models', 'Engine version', 'System reserves', 'Idle unload', 'Queue',
+  'Engine folder', 'Engine binary', 'Model file', 'Profile file', 'Run configuration',
 ];
 const english:Record<string,string>={...baseEnglish,...tune_en,...tools_en,...fix_en,...gh_en,...ui_en,...engine_en,...pick_en,...df2_en,...upd_en,...r3_en,...pic_en,...gui_en,...sav_en,...net_en,...Object.fromEntries(basaltCopy.map(text=>[text,text]))};
 /* English is the key of every string, so it stays in the main file. The other eight languages are one file each, fetched the first time a language is used

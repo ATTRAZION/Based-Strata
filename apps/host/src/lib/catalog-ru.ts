@@ -58,5 +58,16 @@ const basalt = {
     'Connect BasedStrata to an app': 'Подключите BasedStrata к приложению',
     'Notify me when BasedStrata needs an answer': 'Сообщать, когда BasedStrata ждёт ответа',
     'In Manual mode, shows a desktop notification when the assistant waits for your approval and BasedStrata is in the background.': 'В ручном режиме показывает системное уведомление, когда ассистент ждёт твоего разрешения, а BasedStrata на заднем плане.',
+    // Settings > Engine: the read-only card that answers what the Basalt engine is and where its files live.
+    'Open in Models': 'Открыть в «Моделях»',
+    'Engine version': 'Версия движка',
+    'System reserves': 'Запас для системы',
+    'Idle unload': 'Выгрузка при простое',
+    'Queue': 'Очередь',
+    'Engine folder': 'Папка движка',
+    'Engine binary': 'Файл движка',
+    'Model file': 'Файл модели',
+    'Profile file': 'Файл профиля',
+    'Run configuration': 'Конфигурация запуска',
 };
 export default {...base,...tune,...tools,...fix,...gh,...ui,...engine,...pick,...df2,...upd,...r3,...pic,...gui,...sav,...net,...basalt} as Record<string,string>;

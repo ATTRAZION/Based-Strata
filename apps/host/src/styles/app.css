@@ -7643,3 +7643,23 @@ html[data-motion='reduced'] .native-progress__bar[data-indeterminate] > i { anim
   background-position: calc(100% - 16px) 12px;
   background-size: 120px 104px;
 }
+
+/* Settings → Engine: the read-only Basalt card. Same split as everywhere else —
+   ember marks what comes from the engine, and the paths sit in selectable code so
+   a person can copy them rather than retype them. */
+.basalt-info > .h3 { color: var(--st-ember-text); }
+.basalt-info__head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--st-line); }
+.basalt-info__head p { margin: 0; }
+.basalt-info__head .st-btn { margin-inline-start: auto; flex: none; }
+.basalt-info__dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--st-ember-deep); }
+.basalt-info__dot[data-on] { background: var(--st-ember); box-shadow: 0 0 0 4px var(--st-ember-tint); }
+.basalt-info__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 28px; padding: 12px 16px; }
+.basalt-info__grid + .basalt-info__grid { border-top: 1px solid var(--st-line); }
+.basalt-info__row { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; min-width: 0; }
+.basalt-info__row > span { font-size: var(--st-fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--st-ink-muted); flex: none; }
+.basalt-info__row > strong { font-weight: 600; text-align: end; overflow-wrap: anywhere; min-width: 0; }
+.basalt-info__row > strong > code { font-size: .92em; overflow-wrap: anywhere; }
+@media (max-width: 720px) {
+  .basalt-info__row { flex-direction: column; gap: 2px; }
+  .basalt-info__row > strong { text-align: start; }
+}
