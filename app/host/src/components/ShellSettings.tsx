@@ -43,7 +43,7 @@ export function DoneSoundSetting() {
 /** A desktop notification when Manual mode waits for an approval (#3477). */
 export function ApprovalNotifySetting() {
     const on = useStore(s => s.approvalNotify);
-    return <button className="st-toggle" role="switch" aria-checked={on} aria-label={tr("Notify me when Strata needs an answer")}
+    return <button className="st-toggle" role="switch" aria-checked={on} aria-label={tr("Notify me when BasedStrata needs an answer")}
         onClick={() => { if (!on) void askNotificationPermission(); setApprovalNotify(!on); }}/>;
 }
 

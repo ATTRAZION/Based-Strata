@@ -50,6 +50,12 @@
   --st-warn:#e39b0b;     --st-warn-tint:#fff6e0;    --st-warn-text:#8a5a00;   /* (derived) */
   --st-danger:#e0283f;   --st-danger-tint:#fdecee;  --st-danger-text:#b01a2e; /* (derived) */
 
+  /* Basalt's ember. Strata keeps emerald for what the app itself does; the engine
+     this build runs by itself (Basalt) speaks in these instead. Values come from
+     Basalt's own web UI: --ember #F2662B, --ember-hot #FFB547, --ember-deep #B8401A. */
+  --st-ember:#f2662b; --st-ember-hot:#ffc566; --st-ember-deep:#b8401a;
+  --st-ember-text:#a1371a; --st-ember-tint:#fdeee4;
+
   --st-code-bg:#1b1f23;  --st-code-ink:#e6e9ec;  /* code blocks stay dark in both themes (derived) */
 
   --st-sh-card:0 18px 7px rgba(0,0,0,.01),0 10px 6px rgba(0,0,0,.02),0 4px 4px rgba(0,0,0,.03),0 1px 2px rgba(0,0,0,.04);
@@ -60,12 +66,14 @@
 
 /* color — dark (all derived) */
 [data-theme="dark"]{
-  --st-bg:#0e1113;
-  --st-surface:#161a1d;
-  --st-surface-2:#1d2226;
-  --st-line:#2a3036;
-  --st-line-soft:#22272c;
-  --st-ink:#eef1f3;
+  /* The dark surfaces take Basalt's stone: its own UI runs on #0E1114 / #151A1F / #28313A,
+     and this build spends most of its dark hours next to Basalt's monitor window. */
+  --st-bg:#0e1114;
+  --st-surface:#151a1f;
+  --st-surface-2:#1a2128;
+  --st-line:#28313a;
+  --st-line-soft:#222a32;
+  --st-ink:#e9ecee;
   --st-ink-soft:#c7cdd3;
   --st-ink-muted:#8e979f;
   --st-icon:#c7cdd3;
@@ -80,6 +88,10 @@
   --st-info:#3aa9ff;     --st-info-tint:rgba(58,169,255,.12);  --st-info-text:#7cc4ff;
   --st-warn:#f5b53d;     --st-warn-tint:rgba(245,181,61,.12);  --st-warn-text:#f8c96a;
   --st-danger:#ff5a6e;   --st-danger-tint:rgba(255,90,110,.12);--st-danger-text:#ff8a98;
+
+  /* Basalt's ember, lit the way its own dark theme lights it. */
+  --st-ember:#ff7a3d; --st-ember-hot:#ffb547; --st-ember-deep:#c9461c;
+  --st-ember-text:#ff9a68; --st-ember-tint:rgba(255,122,61,.13);
 
   --st-code-bg:#0a0c0e;  --st-code-ink:#e6e9ec;
 

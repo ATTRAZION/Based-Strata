@@ -18,12 +18,12 @@ export function QuitStrataDialog({ open, onClose }: { open: boolean; onClose: ()
     } catch { setState('failed'); }
   }
   const stopped = state === 'stopped';
-  return <Dialog open={open} compact title={tr(stopped ? "Strata has stopped" : "Quit Strata?")} onClose={state === 'stopping' ? () => {} : onClose}
-    actions={stopped ? undefined : <><Btn onClick={onClose} disabled={state === 'stopping'}>{tr("Cancel")}</Btn><Btn variant="primary" disabled={state === 'stopping'} onClick={() => void quit()}>{tr(state === 'stopping' ? "Quitting…" : "Quit Strata")}</Btn></>}>
+  return <Dialog open={open} compact title={tr(stopped ? "BasedStrata has stopped" : "Quit BasedStrata?")} onClose={state === 'stopping' ? () => {} : onClose}
+    actions={stopped ? undefined : <><Btn onClick={onClose} disabled={state === 'stopping'}>{tr("Cancel")}</Btn><Btn variant="primary" disabled={state === 'stopping'} onClick={() => void quit()}>{tr(state === 'stopping' ? "Quitting…" : "Quit BasedStrata")}</Btn></>}>
     <p className="small" role="status">{tr(stopped
-      ? "Strata has stopped. You can close this tab. To use it again, start Strata from its icon."
+      ? "BasedStrata has stopped. You can close this tab. To use it again, start BasedStrata from its icon."
       : state === 'failed'
-        ? "Strata could not be stopped from here. Run the app with --quit in a terminal, or try again."
-        : "This stops the model and ends Strata. Your chats and files stay as they are. Closing the browser tab alone would leave Strata running.")}</p>
+        ? "BasedStrata could not be stopped from here. Run the app with --quit in a terminal, or try again."
+        : "This stops the model and ends BasedStrata. Your chats and files stay as they are. Closing the browser tab alone would leave BasedStrata running.")}</p>
   </Dialog>;
 }

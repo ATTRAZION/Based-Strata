@@ -41,6 +41,23 @@ const basalt = {
     'The model rests in memory': 'Модель отдыхает в памяти',
     'The model is unloaded': 'Модель выгружена',
     'The model this app runs by itself answers a chat that names no model': 'Модель, которую это приложение ведёт само, отвечает в чате, где модель не выбрана',
+    // Имя этой сборки: Strata, внутри которой Basalt.
+    'BasedStrata': 'BasedStrata',
+    'BasedStrata — open chat': 'BasedStrata — открыть чат',
+    'Quit BasedStrata': 'Выйти из BasedStrata',
+    'Quit BasedStrata?': 'Выйти из BasedStrata?',
+    'BasedStrata has stopped': 'BasedStrata остановлена',
+    'BasedStrata has stopped. You can close this tab. To use it again, start BasedStrata from its icon.': 'BasedStrata остановлена. Можно закрыть эту вкладку. Чтобы пользоваться снова, запусти BasedStrata значком.',
+    'BasedStrata could not be stopped from here. Run the app with --quit in a terminal, or try again.': 'BasedStrata не удалось остановить отсюда. Запусти приложение с --quit в терминале или попробуй ещё раз.',
+    'This stops the model and ends BasedStrata. Your chats and files stay as they are. Closing the browser tab alone would leave BasedStrata running.': 'Это остановит модель и завершит BasedStrata. Чаты и файлы останутся как есть. Если просто закрыть вкладку, BasedStrata продолжит работать.',
+    'Set up BasedStrata': 'Настроить BasedStrata',
+    'Welcome to BasedStrata': 'Добро пожаловать в BasedStrata',
+    'A quick tour of BasedStrata': 'Краткое знакомство с BasedStrata',
+    'Message BasedStrata': 'Написать BasedStrata',
+    'Message BasedStrata…': 'Написать BasedStrata…',
+    'Connect BasedStrata to an app': 'Подключите BasedStrata к приложению',
+    'Notify me when BasedStrata needs an answer': 'Сообщать, когда BasedStrata ждёт ответа',
+    'In Manual mode, shows a desktop notification when the assistant waits for your approval and BasedStrata is in the background.': 'В ручном режиме показывает системное уведомление, когда ассистент ждёт твоего разрешения, а BasedStrata на заднем плане.',
 };
 export default {...base,...tune,...tools,...fix,...gh,...ui,...engine,...pick,...df2,...upd,...r3,...pic,...gui,...sav,...net,...dmg,...guic,...fixa,...gtui,...basalt} as Record<string,string>;
 import dmg from '../locales/dmg-ru.json';

@@ -184,7 +184,7 @@ test('the interface size scales the whole page, up to 200 percent, and a saved v
 test('the port, tray, sound and notification rows are in Settings, and only the desktop app shows the port and the tray', () => {
   const settings = readFileSync(new URL('../src/screens/Settings.tsx', import.meta.url), 'utf8');
   assert.match(settings, /label: 'Sound when work finishes'/);
-  assert.match(settings, /label: 'Notify me when Strata needs an answer'/);
+  assert.match(settings, /label: 'Notify me when BasedStrata needs an answer'/);
   assert.match(settings, /\.\.\.\(shell\?\.tray \? \[\{ section: 'General', label: 'Minimise to tray'/);
   assert.match(settings, /\.\.\.\(shell\?\.desktop \? \[\{ section: 'General', label: 'App port'/);
   const store = readFileSync(new URL('../src/lib/store.ts', import.meta.url), 'utf8');

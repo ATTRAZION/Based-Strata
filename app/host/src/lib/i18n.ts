@@ -46,6 +46,14 @@ const basaltCopy = [
  // The same engine in the sidebar, the palette and the Monitor: these words come from the host's reading of /metrics.
  'Start Basalt', 'Basalt is already running.', 'Basalt is not running.', 'Brings the model engine this app owns up',
  'Loading model into memory', 'Generating response', 'The model rests in memory', 'The model is unloaded', 'The model this app runs by itself answers a chat that names no model',
+  // The build's own name: Strata with Basalt underneath, written as one word wherever the app introduces itself.
+  'BasedStrata', 'BasedStrata — open chat', 'Quit BasedStrata', 'Quit BasedStrata?', 'BasedStrata has stopped',
+  'BasedStrata has stopped. You can close this tab. To use it again, start BasedStrata from its icon.',
+  'BasedStrata could not be stopped from here. Run the app with --quit in a terminal, or try again.',
+  'This stops the model and ends BasedStrata. Your chats and files stay as they are. Closing the browser tab alone would leave BasedStrata running.',
+  'Set up BasedStrata', 'Welcome to BasedStrata', 'A quick tour of BasedStrata', 'Message BasedStrata', 'Message BasedStrata…',
+  'Connect BasedStrata to an app', 'Notify me when BasedStrata needs an answer',
+  'In Manual mode, shows a desktop notification when the assistant waits for your approval and BasedStrata is in the background.',
 ];
 const english:Record<string,string>={...baseEnglish,...tune_en,...tools_en,...fix_en,...gh_en,...ui_en,...engine_en,...pick_en,...df2_en,...upd_en,...r3_en,...pic_en,...gui_en,...sav_en,...net_en,...dmg_en,...guic_en,...fixa_en,...gtui_en,...Object.fromEntries(basaltCopy.map(text=>[text,text]))};
 /* English is the key of every string, so it stays in the main file. The other eight languages are one file each, fetched the first time a language is used

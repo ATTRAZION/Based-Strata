@@ -74,7 +74,7 @@ export function OnboardingTour({ page, onChange }: {
     useEffect(() => { const motion = matchMedia('(prefers-reduced-motion: reduce)'); setPhase(motion.matches ? 2 : 0); if (motion.matches)
         return; const timer = setInterval(() => setPhase(value => (value + 1) % 3), 2600); return () => clearInterval(timer); }, [page, replay]);
     const item = tour[page % tour.length];
-    return <section className="onboard-tour" aria-label={tr("A quick tour of Strata")}>
+    return <section className="onboard-tour" aria-label={tr("A quick tour of BasedStrata")}>
   <div className="onboard-tour-top"><span>{tr("Try this in Strata")}</span><div role="tablist" aria-label={tr("Tour topic")}>{tr(tour.map((t, i) => <button key={t.label} type="button" role="tab" id={`onboard-tour-tab-${i}`} aria-controls="onboard-tour-content" aria-selected={page === i} tabIndex={page === i ? 0 : -1} onClick={() => onChange(i)} onKeyDown={e => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
         e.preventDefault();
         const next = e.key === 'Home' ? 0 : e.key === 'End' ? tour.length - 1 : (page + (e.key === 'ArrowLeft' ? -1 : 1) + tour.length) % tour.length;
