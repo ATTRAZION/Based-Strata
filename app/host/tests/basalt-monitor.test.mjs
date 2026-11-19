@@ -60,6 +60,11 @@ test('Basalt words become the Monitor words: phase, speed, context and the exper
   assert.equal(reading.model.loaded, true);
 });
 
+test('the version the engine names in /metrics reaches Settings; without it there is only a dash', () => {
+  assert.equal(basaltReading({ metrics: METRICS, health: HEALTH, label: LABEL }).version, '0.4.1');
+  assert.equal(basaltReading({ metrics: { ...METRICS, engine: {} }, health: HEALTH, label: LABEL }).version, null);
+});
+
 test('the request table keeps what the engine measured: reuse, hit rate, decode speed, the time to the first token', () => {
   const reading = basaltReading({ metrics: METRICS, health: HEALTH, label: LABEL });
   assert.equal(reading.requests.length, 2);

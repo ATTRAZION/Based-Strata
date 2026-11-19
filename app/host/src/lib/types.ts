@@ -10,8 +10,6 @@ export interface SoftwareUpdate {
   message: string;
   /** The technical reason behind `message`, shown only behind the Details disclosure. */
   details?: string;
-  /** Windows desktop update path / custom-launcher profile warning surfaced before updating (#6573). */
-  installPathWarning?: string;
 }
 export interface UpdateCheckResult { checkedAt: string; strata: SoftwareUpdate; engine: SoftwareUpdate }
 
@@ -25,7 +23,7 @@ export interface HardwareCheck {
 
 export interface ProcessorInfo { id:string; socket:string; model:string; cores:number; threads:number; arch:string; ghz:number; logicalIds?:number[] }
 export interface CpuReading { id:string; utilizationPct:number|null }
-export interface GpuReading { id:string; temperatureC:number|null; utilizationPct:number|null; memoryUsedGb:number|null; /** The engine's own total for this device (hardware.gpus[].mem_total), when it reports one. */ memoryTotalGb?:number|null; source:string; sampledAt:string; powerW?:number|null; powerLimitW?:number|null; pcieGen?:number|null; pcieGenMax?:number|null; pcieWidth?:number|null; pcieRxMbs?:number|null; fanPct?:number|null; clockMhz?:number|null }
+export interface GpuReading { id:string; temperatureC:number|null; utilizationPct:number|null; memoryUsedGb:number|null; source:string; sampledAt:string; powerW?:number|null; powerLimitW?:number|null; pcieGen?:number|null; pcieGenMax?:number|null; pcieWidth?:number|null; pcieRxMbs?:number|null; fanPct?:number|null; clockMhz?:number|null }
 
 export interface GpuInfo {
   id?: string;
@@ -129,19 +127,34 @@ export interface ImageModelLibrary {
 }
 
 export type ModelProtocol = 'openai-chat' | 'openai-responses' | 'anthropic';
-export type ModelReasoningFormat = 'auto' | 'default' | 'strata' | 'deepseek' | 'effort';
 export interface ApiModel { id: string; name: string; contextMax?: number | null; /** What the person ticked ("This model reads pictures"): true, false, or null for not set. */ vision?: boolean | null; /** The answer in use: the tick, else what the server said; null when nobody knows. */ reads?: boolean | null; /** The provider says the model can think (OpenRouter's supported_parameters): the Reasoning menu then works. */ reasoning?: boolean | null; thinks?: boolean | null }
 export interface ModelProviderPreset { id: string; name: string; baseUrl: string; protocol: ModelProtocol; baseUrlHint?: string }
 export interface ModelConnection {
   id: string; kind: 'provider' | 'custom'; provider: string | null; name: string;
   managed?: boolean;
-  baseUrl: string; protocol: ModelProtocol; reasoningFormat?: ModelReasoningFormat; apiKeySet: boolean; models: ApiModel[];
+  baseUrl: string; protocol: ModelProtocol; apiKeySet: boolean; models: ApiModel[];
 }
 export interface ModelProviders { catalog: ModelProviderPreset[]; connections: ModelConnection[] }
 export interface RemoteModelSelection { connectionId: string; modelId: string }
+/** The Basalt engine the app itself starts, as `GET /api/basalt` answers it (the Models card reads the whole thing). */
+export interface BasaltState {
+  configured: boolean; connectionId: string; action: string | null;
+  model: { id: string; name: string; contextMax: number; maxOutput?: number | null; vision: boolean; reasoning?: boolean | null };
+  settings: { context: number; drafting: string; profile: string; vision: boolean; ramReserve: number; vramReserve: number; idleUnload: number };
+  presets: { name: string; values: unknown }[]; contexts: number[]; pendingSettings: boolean; packagePath: string;
+  /** Where this app keeps the engine, and the version it answered with (null until it has). Settings shows it; the app never guesses it. */
+  info?: { port: number; version: string | null; release: string; engine: string; python: string; logFile: string; settingsFile: string; runConfig: string; configPath: string } | null;
+  running: boolean; loaded: boolean; loading: boolean;
+  live?: { state: string; loaded: boolean; loading: boolean; outputTps: number; promptTps: number; usedTokens: number; maxTokens: number; queued: number; requests: number } | null;
+}
+/** The short answer the sidebar and the status line need, whichever way it came (the Models fetch or the host's event). */
+export interface BasaltSummary {
+  name: string; modelId: string | null; port: number | null; running: boolean; loaded: boolean; loading: boolean;
+  loadPercent?: number | null; state: string; context: number | null; vision: boolean; outputTps: number | null; usedTokens: number | null;
+}
 export interface ModelConnectionDraft {
   id?: string; kind: 'provider' | 'custom'; provider: string | null; name: string;
-  baseUrl: string; protocol: ModelProtocol; reasoningFormat?: ModelReasoningFormat; apiKey: string; clearKey?: boolean; models: ApiModel[];
+  baseUrl: string; protocol: ModelProtocol; apiKey: string; clearKey?: boolean; models: ApiModel[];
 }
 
 export type Effort = 'fastest' | 'balanced' | 'quality' | 'max';
@@ -245,10 +258,6 @@ export interface ServingState {
   stats: { running: number; waiting: number; completed: number; failed: number; tokensOut: number };
   requests: ServeRequest[];
   pauseServing: boolean;
-  /** #5661: models whose MCP tools an API client of this computer may use (opt-in, default none). */
-  mcpTools?: string[];
-  /** Origins of pages that may use /v1 without an API key besides the app's own (no UI; PATCH /api/serving). */
-  trustedOrigins?: string[];
 }
 
 export interface MonitorSample {
@@ -271,6 +280,8 @@ export interface MonitorSample {
 
 export interface MonitorState {
   telemetry?: { throughput: string; thermals: string; memory: string; system?:string; context?: string; ttftMs?: number | null };
+  /** A model the host reaches through an engine of its own (Basalt): named, but not a Strata Control instance. */
+  model?: { name: string; kind: string; running: boolean; loaded: boolean; loading: boolean; loadPercent?: number | null; state: string; port: number | null };
   phase: 'idle' | 'reading' | 'thinking' | 'generating' | 'loading' | 'error';
   phaseLabel: string;
   variantId: string | null;
@@ -330,15 +341,11 @@ export interface MonitorState {
 }
 
 export interface ChatMessage {
-  /** Durable, human-readable activity records. Unlike the live status line these remain after the turn ends. */
-  activity?: { text: string; at: number }[];
   /** Tool calls the model is writing right now (a file, a command): live data for the writing card; see ToolDraft. */
   drafts?: ToolDraft[];
   /** The person's message is written with Markdown (a task handover: bold headings and lists), so the bubble draws it as such. */
   markdown?: boolean;
   photos?:import('./chat-photos').ChatPhoto[];
-  /** #5993: where each numbered quote of this message came from ([1], [2] ...), so the transcript can label it and jump to it. */
-  quotes?: import('./quotes').QuoteSource[];
   /** Reply came from a saved API connection, rather than the local engine. */
   remoteModel?: boolean;
   timeSkipId?: string;
@@ -442,12 +449,6 @@ export interface Workspace {
   aliases?: string[];
 }
 
-export interface SessionAgentReply {
-  id: string;
-  text: string;
-  at: string;
-}
-
 export interface SessionAgent {
   id: string;
   name: string;
@@ -457,10 +458,6 @@ export interface SessionAgent {
   tokens: number;
   /** Time the latest duration measurement was received. */
   updatedAt?: number;
-  /** What the helper did, newest last (at most 20, short): a tool it used ({ verb, target }) or words it wrote ({ said }). Shown by View log (#5254). */
-  steps?: { verb?: string; target?: string; said?: string }[];
-  /** Structured assistant replies from this helper, in order (#6516). */
-  replies?: SessionAgentReply[];
 }
 
 export type ChatMode = 'auto' | 'manual' | 'accept-edits' | 'plan' | 'bypass';
@@ -492,8 +489,6 @@ export interface Session {
   timeSkips?: import('./time-skip').TimeSkipRun[];
   showcase?: boolean;
   agents?: SessionAgent[];
-  /** Finished helper rows the person removed from this chat. */
-  dismissedAgentIds?: string[];
   previewOpen?: string;
   closedPreviews?: string[];
   showcaseAgentStates?: boolean;
