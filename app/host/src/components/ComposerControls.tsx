@@ -74,6 +74,8 @@ export function ComposerControls({ session, onPreview, onAttach, onError, onSlas
     const addFilesLatest = useRef<(files: File[]) => Promise<void>>(async () => { });
     // A model on an API takes a reasoning effort when its provider says it can think (OpenRouter's model list); otherwise the provider decides.
     const apiOnlyDefault = !!apiModel && apiModel.thinks !== true;
+    // The engine this build runs by itself: its connection has no thinking-budget switch to offer.
+    const managedModel = !!apiModel && providers?.connections.find(c => c.id === remoteModel?.connectionId)?.managed === true;
     const pictures = pictureStatus(native, remoteModel, providers);
     const isHy4Active = !remoteModel && !!nativeModel && /^hy4-flash/i.test(nativeModel.model);
     const isInklingActive = !remoteModel && !!nativeModel && /^inkling-2-mini/i.test(nativeModel.model);

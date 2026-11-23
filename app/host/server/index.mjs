@@ -76,6 +76,7 @@ import { appVersionFrom, appVersionToShow } from './app-version.mjs';
 import { createImageModels } from './image-models.mjs';
 import { createRuntimeModels } from './runtime-models.mjs';
 import { createNativeControl } from './native-control.mjs';
+import { BASALT_ID, createBasaltRuntime } from './basalt-runtime.mjs';
 import { nativeUnloadPlan } from './storage-check.mjs';
 import { installBundledEngine, cleanupAfterInstall } from './bundled-engine.mjs';
 import { systemLocale } from './region.mjs';
@@ -153,7 +154,7 @@ if (control && process.platform === 'win32' && !process.env.STRATA_NO_REPAIR_ACC
 const appUi = createAppUi({ shutdown: () => shutdown() });
 /* The app's version has one source: the desktop shell passes it (STRATA_APP_VERSION, from app/desktop/src-tauri/Cargo.toml). Outside the app it is read from the same file in a checkout, else 'dev'. */
 function appVersion() { return appVersionFrom({ env: process.env, here: HERE }); }
-const appUpdater = appUi.updater;
+const appUpdater = basalt ? null : appUi.updater;
 const shellNotifier = createShellNotifier();
 /** What the page needs for the desktop settings: whether this is the desktop app, the port in use, the saved choices and a busy-port notice. */
 function shellState() {
@@ -621,7 +622,7 @@ function clientName(req) {
   return 'Local client';
 }
 
-async function runRemoteTurn({ selection, message, history, images = [], thinking, onFrame, signal, workspaceId }) {
+async function runRemoteTurn({ selection, message, history, images = [], thinking, thinkingBudget = 0, onFrame, signal, workspaceId }) {
   const controller = new AbortController();
   const requestSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
   let entry;
@@ -695,7 +696,11 @@ async function runAgentTurn({ res, controller, chatId, body, message, workspaceI
 }
 
 async function runTurn({ message, history = [], onFrame, signal, client, workspaceId = null, sessionId = null, remoteModel = null, runtimeModelId = undefined, nativeModelId, images=[], useTools=false, thinking='medium', thinkingBudget=0 }) {
-  if (remoteModel) return runRemoteTurn({ selection: remoteModel, message, history, images, thinking, onFrame, signal, workspaceId });
+  if (remoteModel) return runRemoteTurn({ selection: remoteModel, message, history, images, thinking, thinkingBudget, onFrame, signal, workspaceId });
+  // Basalt keeps its model in memory by itself. A chat that was given no model of its own answers from it,
+  // the way the native engine answers when it has one loaded: the app works without a separate pick first.
+  const managedLive = basalt?.live?.();
+  if (managedLive?.loaded === true) return runRemoteTurn({ selection: { connectionId: BASALT_ID, modelId: basalt.modelId() }, message, history, images, thinking, thinkingBudget, onFrame, signal, workspaceId });
   if(native.hasLive()||nativeModelId){
     let instance;try{instance=native.resolveInstance(nativeModelId??native.state().defaultId);}catch(e){const message=plainNoModel(e.message);onFrame({type:'error',message});return {error:message};}const started=Date.now(),cancel=new AbortController();
     const entry=serving.open({client:client??'Strata chat',endpoint:'/chat/completions',model:instance.apiModelId,instanceId:instance.id,gpuIds:instance.gpus.map(String),cancel:()=>cancel.abort()});
@@ -1070,6 +1075,25 @@ function chatHelperRow(sessionId, helperId, saved) {
 }
 
 async function api(req, res, path, method, url) {
+  // The engine this installation runs by itself: the Models card and the Settings card read it, and start,
+  // stop, configure or load it. A page of another site cannot send the JSON body these routes demand.
+  if (path === '/api/basalt' && method === 'GET') return json(res, 200, basalt ? await basalt.state() : { configured: false });
+  if (['/api/basalt/start', '/api/basalt/stop', '/api/basalt/settings', '/api/basalt/load'].includes(path) && method === 'POST') {
+    if (!basalt) return error(res, 404, 'Basalt has not been configured for this installation.');
+    const origin = req.headers.origin;
+    if (!req.headers['content-type']?.startsWith('application/json') ||
+        (origin && ![`http://127.0.0.1:${PORT}`, `http://localhost:${PORT}`].includes(origin))) {
+      return error(res, 403, 'Open Strata to switch engines.');
+    }
+    try {
+      if (path.endsWith('/stop')) return json(res, 200, await stopBasalt());
+      const result = path.endsWith('/settings') ? await basalt.configure(await readBody(req, 16384))
+        : path.endsWith('/load') ? await basalt.load() : await basalt.start();
+      hub.send('providers', withPictureAnswers(modelProviders.list()));
+      return json(res, 200, result);
+    }
+    catch (err) { return error(res, 409, err.message); }
+  }
   if(path==='/api/fonts'&&method==='GET')return json(res,200,await systemFonts());
   // --- chats: one file each in the data folder -----------------------------
   // Not held back by a model folder move: saving a chat has nothing to do with the models. A page must name itself (x-strata-client), which
@@ -1198,7 +1222,10 @@ async function api(req, res, path, method, url) {
     catch (err) { return error(res, 400, err.message); }
   }
   const providerMatch = /^\/api\/model-providers\/([a-zA-Z0-9-]+)$/.exec(path);
-  if (providerMatch && method === 'DELETE') return json(res, 200, withPictureAnswers(modelProviders.remove(providerMatch[1])));
+  if (providerMatch && method === 'DELETE') {
+    if (providerMatch[1] === BASALT_ID) return error(res, 409, 'Manage the Basalt engine in Models.');
+    return json(res, 200, withPictureAnswers(modelProviders.remove(providerMatch[1])));
+  }
 
   if(path === '/api/artifacts/open' && method === 'POST') {
     const body=await readBody(req, 30*1024*1024);
@@ -2270,6 +2297,7 @@ async function api(req, res, path, method, url) {
     const body = await readBody(req,12*1024*1024);
     if (path === '/api/plan/start-goal') { body.message = '/plan start'; if (typeof body.planId !== 'string') return error(res, 400, 'planId is required'); }
     let images;try{const named=Array.isArray(body.imageIds)&&body.imageIds.length?uploads.dataUrls(typeof body.sessionId==='string'?body.sessionId:'',body.imageIds):[];images=validateChatImages([...(Array.isArray(body.images)?body.images:[]),...named]);}catch(e){return error(res,400,e.message);}
+    if (body.remoteModel?.connectionId === BASALT_ID && !basalt?.available()) return error(res, 409, 'Start Basalt in Models before using it in chat.');
     if(images.length&&body.remoteModel){const own=modelProviders.withSecrets().find(c=>c.id===body.remoteModel.connectionId);const row=own?.models.find(m=>m.id===body.remoteModel.modelId);const refused=await pictureRefusal(own,row);if(refused)return error(res,409,refused);}
     else if(images.length){let selected;try{selected=native.resolveInstance(body.nativeModelId??native.state().defaultId);}catch(e){return error(res,409,e.message);}if(!selected.vision)return error(res,409,'This model was started without picture reading. Open Models, turn on Read pictures and load it again, or choose a model that reads pictures.');}
     // The goal bar's Resume has no words of its own: it is the same turn as "/goal resume".
@@ -2582,7 +2610,7 @@ const shutdown = async () => {
   clearInterval(taskTimer);tasks.close();
   const timeout=setTimeout(()=>process.exit(0),control?45000:10000);timeout.unref();   // stopping an engine through Control: drained (15 s), then ended; the shell's deadline is longer
   server.close();server.closeAllConnections?.();
-  await Promise.allSettled([localShare.stop(),cloudflare.stop(),native.close(),agent.close()]);
+  await Promise.allSettled([localShare.stop(),cloudflare.stop(),native.close(),agent.close(),basalt?.close()]);
   process.exit(0);
 };
 // Every ordinary way of being told to stop takes the clean path: Ctrl+C, kill, the terminal closing (SIGHUP), Ctrl+Break.

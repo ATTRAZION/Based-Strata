@@ -6032,14 +6032,14 @@ button.menu__item:disabled { opacity: .5; cursor: default; }
 .artifact-tab:hover .artifact-tab__close, .artifact-tab:focus-within .artifact-tab__close { opacity: 1; }
 .artifact-tab__close:hover { color: var(--st-ink); background: var(--st-line-soft); }
 .subagent-row { display: flex; gap: 9px; align-items: flex-start; padding: 11px 0; }
-.subagent-row--clickable { cursor: pointer; border-radius: var(--st-r-md); padding-inline: 6px; margin-inline: -6px; transition: background 140ms ease; }
+.subagent-row--clickable { cursor: pointer; border-radius: var(--st-r-md); padding-inline: 6px; margin-inline: -6px; transition: background var(--st-t-micro); }
 .subagent-row--clickable:hover { background: var(--st-surface-2); }
 .subagent-row + .subagent-row { border-top: 1px solid var(--st-line-soft); }
 .subagent-row[data-panel] { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; }
 .subagent-row[data-panel] .subagent-log, .subagent-row[data-panel] .subagent-messages, .subagent-row[data-panel] .subagent-work__composer { grid-column: 1 / -1; }
 .subagent-thread__meta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--st-ink-muted); margin-bottom: 4px; }
 .subagent-thread__meta strong { color: var(--st-ink); font-weight: 600; }
-.subagent-thread__badge { padding: 1px 6px; border-radius: 999px; background: var(--st-surface); border: 1px solid var(--st-line); font-size: 10px; }
+.subagent-thread__badge { padding: 1px 6px; border-radius: 999px; background: var(--st-surface); border: 1px solid var(--st-line); font-size: var(--st-fs-xs); }
 .subagent-thread__text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .subagent-thread .subagent-thread__item--assistant { border-left-color: var(--st-info-text); }
 .helper-window { height: 100%; min-height: 0; }
@@ -7765,7 +7765,7 @@ button.sent-quote__label { text-decoration: underline; text-underline-offset: 2p
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='104' viewBox='0 0 120 104'%3E%3Cg fill='none' stroke='%23f2662b' stroke-width='1.3'%3E%3Cpath d='M30 2 58 18 58 50 30 66 2 50 2 18Z' stroke-opacity='.18'/%3E%3Cpath d='M88 38 116 54 116 86 88 102 60 86 60 54Z' stroke-opacity='.10'/%3E%3C/g%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: calc(100% - 16px) 12px;
-  background-size: 120px 104px; c0fa81469 (feat(app): call this build BasedStr
+  background-size: 120px 104px;
 }
 
 /* Settings → Engine: the read-only Basalt card. Same split as everywhere else —
@@ -7782,7 +7782,7 @@ button.sent-quote__label { text-decoration: underline; text-underline-offset: 2p
 .basalt-info__row { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; min-width: 0; }
 .basalt-info__row > span { font-size: var(--st-fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--st-ink-muted); flex: none; }
 .basalt-info__row > strong { font-weight: 600; text-align: end; overflow-wrap: anywhere; min-width: 0; }
-.basalt-info__row > strong > code { font-size: .92em; overflow-wrap: anywhere; }
+.basalt-info__row > strong > code { font-size: var(--st-fs-sm); overflow-wrap: anywhere; }
 @media (max-width: 720px) {
   .basalt-info__row { flex-direction: column; gap: 2px; }
   .basalt-info__row > strong { text-align: start; }

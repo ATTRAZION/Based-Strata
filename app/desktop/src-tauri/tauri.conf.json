@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Strata",
+  "productName": "BasedStrata",
   "identifier": "ai.strata.desktop",
   "build": {
     "beforeBuildCommand": "node scripts/prepare-harness-bundle.mjs",
@@ -28,8 +28,8 @@
       "icons/icon.ico"
     ],
     "category": "DeveloperTool",
-    "shortDescription": "Local AI, tuned to one model.",
-    "longDescription": "Strata runs one local model, tuned to your machine. Desktop and Terminal share the same model inventory, profiles, runtime and agent sessions.",
+    "shortDescription": "Local AI on Basalt, tuned to one model.",
+    "longDescription": "BasedStrata runs one local model through Basalt, tuned to your machine. Desktop and Terminal share the same model inventory, profiles, runtime and agent sessions.",
     "resources": {
       "../../host/dist": "host/dist",
       "../../host/server": "host/server",

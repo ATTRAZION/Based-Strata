@@ -32,6 +32,10 @@ export function createBasaltRuntime({ installFile, dataDir, releaseStrata, strat
   const enginePath = join(releasePath, 'bin', 'basalt.exe');
   const defaults = initialSettings(config);
   let saved = readSettings(settingsFile, defaults);
+  /* The settings file is shared by every Basalt profile this installation has served, so a context chosen for
+   * an earlier package can be larger than this model's own ceiling. Take the profile's default instead of
+   * asking the engine for a window the package cannot hold. */
+  if (saved.values.context > model['max-context']) saved = { ...saved, values: { ...saved.values, context: defaults.context } };
   let runningSettings = null;
   const origin = `http://127.0.0.1:${port}`;
   const apiKey = randomBytes(32).toString('hex');
@@ -39,7 +43,7 @@ export function createBasaltRuntime({ installFile, dataDir, releaseStrata, strat
   const connection = {
     id: BASALT_ID, managed: true, kind: 'custom', provider: null, name: 'Basalt', baseUrl: origin + '/v1',
     protocol: 'openai-chat', apiKey, models: [{
-      id: model.alias, name: 'Qwen IQ3_S · Basalt', contextMax: saved.values.context, maxOutput: null,
+      id: model.alias, name: model.alias, contextMax: model['max-context'], maxOutput: null,
       vision: saved.values.vision, reasoning: true,
     }],
   };
