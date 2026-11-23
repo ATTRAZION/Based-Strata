@@ -68,10 +68,11 @@ that machine and only paths inside the install:
 
 An older profile with an absolute `config` is replaced at start with such a relative one. When the install folder
 is read-only (Program Files), the profile is kept with the user's data. The `.basalt` package path is chosen at
-staging time: `--model` (or `STRATA_BASALT_MODEL`); without it, the path from the source profile is resolved
-against that profile's folder. Model weights are not part of the installer, so that is the one path that may stay
-absolute; a package placed inside the release is stored relative and travels too. The release and profile paths
-also come from `STRATA_BASALT_SRC` / `STRATA_BASALT_CONFIG` / `STRATA_BASALT_MODEL`, or run it from `app/desktop`
+staging time: `--model` (or `STRATA_BASALT_MODEL`); without it, the path from the source profile is used. The
+installed profile names the package by file name (or relatively when it sits inside the release). At start the app
+looks it up in its own models folder (Settings → Model directory) and, when it is missing, says where to put it
+instead of failing to start; model weights are not part of the installer. The release and profile paths come from
+`STRATA_BASALT_SRC` / `STRATA_BASALT_CONFIG` / `STRATA_BASALT_MODEL`, or run it from `app/desktop`
 as `npm run stage:basalt -- --src ... --config ... --model ...`. `python app/desktop/scripts/stage-basalt.py --check`
 verifies a stage.
 

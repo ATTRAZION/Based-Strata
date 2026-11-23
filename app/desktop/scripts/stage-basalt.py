@@ -11,10 +11,12 @@ and .git, and the profile copied in as `basalt_config.json` with its one model r
 
 No `basalt-local.json` is staged: the app writes it on first start (app/host/server/basalt-profile.mjs), with a
 port that is free on that machine and only paths relative to the install folder — `basalt/basalt_config.json`,
-`basalt`, `control/python/python.exe` — so the profile names no machine that built the installer. The one path
-that may stay absolute is the `.basalt` package, because model weights are not part of the installer: pass it with
-`--model` (or STRATA_BASALT_MODEL). Without `--model` the package named by the source profile is resolved against
-that profile's folder. A package placed inside the release is stored relative and then travels too.
+`basalt`, `control/python/python.exe` — so the profile names no machine that built the installer.
+
+The `.basalt` package is named in the copied profile by its file name only (or by a path relative to the config when
+it sits inside the release). At start the app resolves that name in its own models folder, falling back to a clear
+message instead of a crash. Pass the package with `--model` (or STRATA_BASALT_MODEL); without it the path named by
+the source profile is used for staging, not for the installed profile.
 
 This is a BUILD step: the app never downloads Basalt and never runs pip.
 """
@@ -104,12 +106,14 @@ def stage(src: Path, config: Path, model: Path | None) -> None:
     try:
         model_value = posix(package.relative_to(OUT))
     except ValueError:
-        model_value = posix(package)      # weights stay on this PC: the only path a profile may name absolutely
+        model_value = package.name        # resolved in Strata's models folder at start; never a path of this PC
     data["models"][0]["model"] = model_value
     (OUT / CONFIG_IN_BUNDLE).write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     files, size = tree_summary(OUT)
     print(f"staged Basalt into {OUT}: {files} files, {size / (1 << 20):.0f} MiB")
     print(f"  {CONFIG_IN_BUNDLE} (model {model_value}); no basalt-local.json: the app writes it on first start")
+    if model_value == package.name:
+        print(f"  the package is looked up in Strata's models folder ({package.name}); copy it there before using Basalt")
 
 
 def check_staged() -> int:
@@ -128,7 +132,7 @@ def check_staged() -> int:
                 data = load_config(staged_config)
                 package = package_of(staged_config, data, None)
                 if not package.is_file():
-                    print(f"warning: the model package is not on this PC yet: {package}", file=sys.stderr)
+                    print(f"warning: no package beside the engine; at start {package.name} is looked up in Strata's models folder", file=sys.stderr)
             except SystemExit as error:
                 problems.append(str(error))
     if problems:

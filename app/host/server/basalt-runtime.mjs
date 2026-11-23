@@ -2,16 +2,31 @@
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, openSync, closeSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { CONTEXTS, initialSettings, readSettings, runConfiguration, writeSettings } from './basalt-settings.mjs';
 import { basaltReading, basaltSummary } from './basalt-metrics.mjs';
 
 export const BASALT_ID = 'strata-managed-basalt';
+/** Where the `.basalt` package is: relative to the staged config first, then by name in Strata's models folder. */
+function resolveModelFile(declared, configPath, modelsDir) {
+  const direct = resolve(dirname(configPath), declared);
+  if (existsSync(direct) || !modelsDir) return direct;
+  const named = join(modelsDir, basename(declared));
+  return existsSync(named) ? named : direct;
+}
+
+/** The one sentence a person can act on when the package was never copied next to the engine. */
+function missingModelMessage(declared, resolved, modelsDir) {
+  const folder = modelsDir || 'the models folder in Settings';
+  return `The Basalt model ${basename(declared)} is not there. Put it in ${folder} or inside the install (basalt/models) and start Basalt again. Looked for ${resolved}.`;
+}
+
+
 const bridge = fileURLToPath(new URL('./basalt-server.py', import.meta.url));
 
-export function createBasaltRuntime({ installFile, dataDir, releaseStrata, strataInUse, changed = () => {} }) {
+export function createBasaltRuntime({ installFile, dataDir, modelsDir, releaseStrata, strataInUse, changed = () => {} }) {
   if (!existsSync(installFile)) return null;
   const root = dirname(installFile);
   const getPath = value => resolve(root, value);
@@ -24,6 +39,11 @@ export function createBasaltRuntime({ installFile, dataDir, releaseStrata, strat
       !Number.isInteger(port) || port < 1024 || port > 65535) {
     throw new Error('The managed Basalt profile needs one named model, a context size, and a private port.');
   }
+  /* The installer names the package, not the machine it was built on: a path inside the release resolves as staged,
+   * a bare file name is looked up in Strata's own models folder. Weights are too large to ship, so this is the only
+   * piece of the engine that may live outside the install. */
+  const modelDir = modelsDir ?? '';
+  const modelFile = resolveModelFile(model.model, configPath, modelDir);
   const settingsFile = join(dataDir, 'basalt-settings.json');
   const runConfig = join(dataDir, 'basalt-run.json');
   const logFile = join(dataDir, 'managed-basalt.log');
@@ -99,7 +119,8 @@ export function createBasaltRuntime({ installFile, dataDir, releaseStrata, strat
     const h = child ? await health() : null;
     return { configured: true, connectionId: BASALT_ID, model: connection.models[0], action,
       settings: saved.values, presets: saved.presets, contexts: CONTEXTS, pendingSettings: pendingSettings(),
-      packagePath: resolve(dirname(configPath), model.model),
+      packagePath: modelFile,
+      packageMissing: !existsSync(modelFile),
       // What this app knows about the engine it runs itself: where its files are and the version it answered with.
       info: { port, version: reading?.version ?? null, release: releasePath, engine: enginePath, python: pythonPath,
         logFile, settingsFile, runConfig, configPath },
@@ -142,14 +163,17 @@ export function createBasaltRuntime({ installFile, dataDir, releaseStrata, strat
       if (child && !pendingSettings()) return;
       if (strataInUse()) throw new Error('Finish the current operation before applying Basalt settings.');
       const python = pythonPath, release = releasePath, engine = enginePath;
-      for (const [path, label] of [[python, 'Python'], [engine, 'Basalt'], [resolve(dirname(configPath), model.model), 'The Basalt model']]) {
+      for (const [path, label] of [[python, 'Python'], [engine, 'Basalt']]) {
         if (!existsSync(path)) throw new Error(`${label} was not found at ${path}.`);
       }
+      if (!existsSync(modelFile)) throw new Error(missingModelMessage(model.model, modelFile, modelDir));
       if (child) await closeChild();
       if (await health()) throw new Error('The managed Basalt port is already in use.');
       mkdirSync(dataDir, { recursive: true });
       const values = saved.values;
-      writeFileSync(runConfig, JSON.stringify(runConfiguration(config, configPath, values), null, 2) + '\n');
+      // The run config lives with the data, so it gets the package path resolved here rather than a relative name.
+      const runSource = { ...config, models: [{ ...model, model: modelFile }] };
+      writeFileSync(runConfig, JSON.stringify(runConfiguration(runSource, configPath, values), null, 2) + '\n');
       const log = openSync(logFile, 'a');
       let proc;
       try {

@@ -133,7 +133,7 @@ const chatStore = createChatStore({ dir: store.DATA_DIR, privateDir: makePrivate
 const helperRecords = createHelperRecords(chatStore.root);
 const basaltProfile = await ensureBasaltProfile({ installRoot: resolve(ROOT, '..'), dataDir: store.DATA_DIR });
 const basalt = basaltProfile && createBasaltRuntime({
-  installFile: basaltProfile, dataDir: store.DATA_DIR,
+  installFile: basaltProfile, dataDir: store.DATA_DIR, modelsDir: store.MODELS_DIR,
   strataInUse: () => agent.status().activeTurns > 0 || native.state().jobs.some(j => j.state === 'running') ||
     serving.state().requests.some(r => r.state === 'queued' || r.state === 'generating'),
   releaseStrata: async () => {
