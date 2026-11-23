@@ -11,6 +11,7 @@
     "tauri": "tauri",
     "dev": "npm run build:ui && tauri dev",
     "build": "npm run build:ui && tauri build",
+    "stage:basalt": "python scripts/stage-basalt.py",
     "build:app": "npm run build:ui && tauri build --bundles app",
     "dmg": "npm run build:ui && tauri build --bundles dmg"
   },

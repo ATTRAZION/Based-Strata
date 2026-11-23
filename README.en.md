@@ -37,6 +37,43 @@ The host takes the managed Basalt profile from `basalt-local.json` next to the `
 never written into the settings; from outside the host `/metrics` stays closed (401) — only the host reads it.
 The managed server's log is `managed-basalt.log` in Strata's profile folder.
 
+## Installer with Basalt
+
+The installer is built from four staged components: `control` (Python 3.12.15 and `strata_control`), `harness`,
+`basalt` (the engine and its managed profile) and the UI. None of `control`, `harness` or `basalt` is in the repository.
+
+```bash
+# 1. Control at the matching version (0.1.66 today)
+python app/desktop/scripts/stage-control.py
+
+# 2. Basalt 0.5.6 and basalt-local.json, in one command
+python app/desktop/scripts/stage-basalt.py --src D:\Basalt\basalt-v0.5.6-windows-x64 --config D:\Basalt\basalt_config.json
+
+# 3. Harness from a built checkout (pnpm install --frozen-lockfile && pnpm run build:artifacts)
+node app/desktop/scripts/stage-harness.mjs --src <path to deepseek-harness>
+
+# 4. The installer itself
+cd app/desktop && npm ci && npm run build
+```
+
+The whole build on one line (use your own Basalt and Harness paths):
+
+```bash
+python app/desktop/scripts/stage-control.py && python app/desktop/scripts/stage-basalt.py --src D:\Basalt\basalt-v0.5.6-windows-x64 --config D:\Basalt\basalt_config.json && node app/desktop/scripts/stage-harness.mjs --src <path to deepseek-harness> && cd app/desktop && npm ci && npm run build
+```
+
+`stage-basalt.py` copies the unpacked Basalt release (`bin/`, `serve/`, `tools/`, `data/`) into
+`app/desktop/src-tauri/resources/basalt` and writes `resources/basalt-local.json` beside it. In that profile
+`release` and `python` are paths inside the install (`basalt`, `control/python/python.exe`), so it works from any
+folder, while `config` is the absolute path to your `basalt_config.json` with one `.basalt` package: model weights
+are not part of the installer. Pass the release and profile through environment variables (`STRATA_BASALT_SRC`,
+`STRATA_BASALT_CONFIG`) or run it from `app/desktop` as `npm run stage:basalt -- --src ... --config ...`. The managed
+server's port defaults to 18512 (`--port` or `STRATA_BASALT_PORT`). Verify an existing stage with
+`python app/desktop/scripts/stage-basalt.py --check`. If `bin/` lacks `cublas64_13.dll`, `cublasLt64_13.dll` or
+`cudart64_13.dll`, the script warns: without them `bin\basalt.exe` exits with `0xC0000135`.
+
+The finished installer: `app/desktop/src-tauri/target/release/bundle/nsis/BasedStrata_0.2.20_x64-setup.exe`.
+
 ## What is not here
 
 - No model format or server of our own: the `.basalt` package is served by official Basalt.

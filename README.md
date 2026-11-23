@@ -38,9 +38,47 @@ node --test --test-timeout=180000 tests/basalt-monitor.test.mjs tests/no-model-c
 ```
 
 `config` — профиль Basalt с одним `.basalt`-пакетом, `release` — распакованный архив движка, `python` — интерпретатор для `basalt-server.py`.
-В архиве 0.5.6 для Windows нет CUDA-библиотек, без которых `binasalt.exe` завершается с `0xC0000135`: положите рядом с ним `cublas64_13.dll`, `cublasLt64_13.dll` и `cudart64_13.dll` (они есть в архиве 0.4.1 или в CUDA 13). Ключ `/metrics` создаётся при старте и в настройки не пишется;
+В архиве 0.5.6 для Windows нет CUDA-библиотек, без которых `bin\basalt.exe` завершается с `0xC0000135`: положите рядом с ним `cublas64_13.dll`, `cublasLt64_13.dll` и `cudart64_13.dll` (они есть в архиве 0.4.1 или в CUDA 13). Ключ `/metrics` создаётся при старте и в настройки не пишется;
 снаружи `/metrics` остаётся закрыт (401) — читает его только сам хост. Логи управляемого сервера —
 `managed-basalt.log` в папке профиля Strata.
+
+## Установщик с Basalt
+
+Установщик собирается из четырёх компонентов, и каждый стейджится своей командой: `control` (Python 3.12.15 и
+`strata_control`), `harness`, `basalt` (движок и managed-профиль) и UI. Ни `control`, ни `harness`, ни `basalt`
+в репозитории не лежат.
+
+```bash
+# 1. Control нужной версии (сейчас 0.1.66)
+python app/desktop/scripts/stage-control.py
+
+# 2. Basalt 0.5.6 и basalt-local.json — одной командой
+python app/desktop/scripts/stage-basalt.py --src D:\Basalt\basalt-v0.5.6-windows-x64 --config D:\Basalt\basalt_config.json
+
+# 3. Harness из собранного чекаута (pnpm install --frozen-lockfile && pnpm run build:artifacts)
+node app/desktop/scripts/stage-harness.mjs --src <путь к deepseek-harness>
+
+# 4. Сам установщик
+cd app/desktop && npm ci && npm run build
+```
+
+Вся сборка одной строкой (пути к Basalt и Harness — свои):
+
+```bash
+python app/desktop/scripts/stage-control.py && python app/desktop/scripts/stage-basalt.py --src D:\Basalt\basalt-v0.5.6-windows-x64 --config D:\Basalt\basalt_config.json && node app/desktop/scripts/stage-harness.mjs --src <путь к deepseek-harness> && cd app/desktop && npm ci && npm run build
+```
+
+`stage-basalt.py` берёт распакованный релиз Basalt (`bin/`, `serve/`, `tools/`, `data/`) и копирует его в
+`app/desktop/src-tauri/resources/basalt`, а рядом пишет `resources/basalt-local.json`. В профиле `release` и
+`python` — пути внутри установки (`basalt`, `control/python/python.exe`), поэтому он работает из любой папки, а
+`config` — абсолютный путь к вашему `basalt_config.json` с одним `.basalt`-пакетом: веса моделей в установщик не
+входят. Путь к релизу и профилю можно передать и переменными окружения (`STRATA_BASALT_SRC`, `STRATA_BASALT_CONFIG`)
+или из `app/desktop`: `npm run stage:basalt -- --src ... --config ...`. Порт managed-сервера по умолчанию 18512
+(`--port` или `STRATA_BASALT_PORT`). Проверка уже застейдженного — `python app/desktop/scripts/stage-basalt.py --check`.
+Если в `bin/` нет `cublas64_13.dll`, `cublasLt64_13.dll` или `cudart64_13.dll`, скрипт предупреждает: без них
+`bin\basalt.exe` завершается с `0xC0000135`.
+
+Готовый установщик: `app/desktop/src-tauri/target/release/bundle/nsis/BasedStrata_0.2.20_x64-setup.exe`.
 
 ## Чего здесь нет
 
