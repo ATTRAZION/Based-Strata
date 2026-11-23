@@ -40,14 +40,15 @@ The managed server's log is `managed-basalt.log` in Strata's profile folder.
 ## Installer with Basalt
 
 The installer is built from four staged components: `control` (Python 3.12.15 and `strata_control`), `harness`,
-`basalt` (the engine and its managed profile) and the UI. None of `control`, `harness` or `basalt` is in the repository.
+`basalt` (the engine, its profile and the managed profile) and the UI. None of `control`, `harness` or `basalt` is
+in the repository.
 
 ```bash
 # 1. Control at the matching version (0.1.66 today)
 python app/desktop/scripts/stage-control.py
 
-# 2. Basalt 0.5.6 and basalt-local.json, in one command
-python app/desktop/scripts/stage-basalt.py --src D:\Basalt\basalt-v0.5.6-windows-x64 --config D:\Basalt\basalt_config.json
+# 2. Basalt 0.5.6, its profile and the model path, in one command
+python app/desktop/scripts/stage-basalt.py --src D:\Basalt\basalt-v0.5.6-windows-x64 --config D:\Basalt\basalt_config.json --model D:\Basalt\models\model.basalt
 
 # 3. Harness from a built checkout (pnpm install --frozen-lockfile && pnpm run build:artifacts)
 node app/desktop/scripts/stage-harness.mjs --src <path to deepseek-harness>
@@ -56,21 +57,27 @@ node app/desktop/scripts/stage-harness.mjs --src <path to deepseek-harness>
 cd app/desktop && npm ci && npm run build
 ```
 
+`stage-basalt.py` copies the unpacked Basalt release (`bin/`, `serve/`, `tools/`, `data/`) and the **profile**
+`basalt_config.json` into `app/desktop/src-tauri/resources/basalt`. `resources/basalt-local.json` names no
+absolute path and travels with the install:
+
+```json
+{ "config": "basalt/basalt_config.json", "port": 18512, "release": "basalt", "python": "control/python/python.exe" }
+```
+
+The `.basalt` package path is chosen at staging time: `--model` (or `STRATA_BASALT_MODEL`). Without it, the path
+from the source profile is resolved against that profile's folder; model weights are not part of the installer.
+A package placed inside the release is stored relative and travels too. The release and profile paths also come
+from `STRATA_BASALT_SRC` / `STRATA_BASALT_CONFIG` / `STRATA_BASALT_MODEL`, or run it from `app/desktop` as
+`npm run stage:basalt -- --src ... --config ... --model ...`. The managed server's port defaults to 18512
+(`--port` or `STRATA_BASALT_PORT`). `python app/desktop/scripts/stage-basalt.py --check` verifies a stage and
+rejects a profile whose `config` is absolute.
+
 The whole build on one line (use your own Basalt and Harness paths):
 
 ```bash
-python app/desktop/scripts/stage-control.py && python app/desktop/scripts/stage-basalt.py --src D:\Basalt\basalt-v0.5.6-windows-x64 --config D:\Basalt\basalt_config.json && node app/desktop/scripts/stage-harness.mjs --src <path to deepseek-harness> && cd app/desktop && npm ci && npm run build
+python app/desktop/scripts/stage-control.py && python app/desktop/scripts/stage-basalt.py --src D:\Basalt\basalt-v0.5.6-windows-x64 --config D:\Basalt\basalt_config.json --model D:\Basalt\models\model.basalt && node app/desktop/scripts/stage-harness.mjs --src <path to deepseek-harness> && cd app/desktop && npm ci && npm run build
 ```
-
-`stage-basalt.py` copies the unpacked Basalt release (`bin/`, `serve/`, `tools/`, `data/`) into
-`app/desktop/src-tauri/resources/basalt` and writes `resources/basalt-local.json` beside it. In that profile
-`release` and `python` are paths inside the install (`basalt`, `control/python/python.exe`), so it works from any
-folder, while `config` is the absolute path to your `basalt_config.json` with one `.basalt` package: model weights
-are not part of the installer. Pass the release and profile through environment variables (`STRATA_BASALT_SRC`,
-`STRATA_BASALT_CONFIG`) or run it from `app/desktop` as `npm run stage:basalt -- --src ... --config ...`. The managed
-server's port defaults to 18512 (`--port` or `STRATA_BASALT_PORT`). Verify an existing stage with
-`python app/desktop/scripts/stage-basalt.py --check`. If `bin/` lacks `cublas64_13.dll`, `cublasLt64_13.dll` or
-`cudart64_13.dll`, the script warns: without them `bin\basalt.exe` exits with `0xC0000135`.
 
 The finished installer: `app/desktop/src-tauri/target/release/bundle/nsis/BasedStrata_0.2.20_x64-setup.exe`.
 
