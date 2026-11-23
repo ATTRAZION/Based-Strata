@@ -125,3 +125,5 @@ node_modules/
 /terminal/.venv-build/
 /.venv-build/
 basalt-local.json
+/app/desktop/src-tauri/resources/basalt/
+/app/desktop/src-tauri/resources/basalt-local.json
