@@ -444,7 +444,9 @@ export function ChatScreen() {
         return () => window.removeEventListener('keydown', onKey);
     }, [focusMode]);
     const chatNative = useNative(), queuedPhotos = useChatPhotos(session?.id);
-    const readyForChat = !!loaded || !!chatNative?.instances.some(i => i.status === 'ready');
+    // Basalt keeps its model in memory itself, so a chat that names no model still has something to answer.
+    const engineReady = useStore(s => s.basalt?.running === true && s.basalt?.loaded === true);
+    const readyForChat = !!loaded || engineReady || !!chatNative?.instances.some(i => i.status === 'ready');
     useEffect(() => {
         if (setupVisible || !readyForChat || messageCount)
             return;
@@ -491,7 +493,7 @@ export function ChatScreen() {
         }
         if (timeSkip === null) {
             // No model to answer: say so plainly (or show the download), and do not start a run.
-            const why = noModelNotice(chatNative ?? null, { libraryLoaded: !!loaded });
+            const why = noModelNotice(chatNative ?? null, { libraryLoaded: !!loaded, managed: engineReady });
             if (why) { pushToast('info', tr(why.title), tr(why.message)); return; }
         }
         updateDraft('');

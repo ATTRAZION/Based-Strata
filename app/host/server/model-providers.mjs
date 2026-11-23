@@ -106,7 +106,9 @@ export function createModelProviders({ directory, changed = () => {}, fetchImpl 
     if (!Array.isArray(saved)) fail('The model connections file is invalid.');
     connections = saved; makePrivate(file);
   }
-  function list() { return { catalog: PROVIDER_CATALOG, connections: connections.map(publicConnection) }; }
+  /** The engine this installation runs by itself (Basalt) resolves like any connection, and the picker lists it. */
+  const withManaged = () => managed && !connections.some(c => c.id === managed.id) ? [...connections, managed] : connections;
+  function list() { return { catalog: PROVIDER_CATALOG, connections: withManaged().map(publicConnection) }; }
   function persist(next) {
     const temp = `${file}.${randomUUID()}.tmp`;
     writeFileSync(temp, JSON.stringify(next, null, 2), { mode: 0o600 });
@@ -147,7 +149,7 @@ export function createModelProviders({ directory, changed = () => {}, fetchImpl 
   }
   function remove(id) { return persist(connections.filter(c => c.id !== id)); }
   function resolve(selection) {
-    const connection = connections.find(c => c.id === selection?.connectionId);
+    const connection = withManaged().find(c => c.id === selection?.connectionId);
     const model = connection?.models.find(m => m.id === selection?.modelId);
     if (!connection || !model) fail('This API model is no longer available. Choose another model in the chat picker.');
     return { connection, model };
@@ -291,6 +293,6 @@ export function createModelProviders({ directory, changed = () => {}, fetchImpl 
     onFrame({ type: 'done', ...result }); return result;
   }
   /** Connections WITH their keys, for the host's own agent bridge only; never serialised to a client. */
-  function withSecrets() { return connections.map(c => ({ ...c, models: c.models.map(m => ({ ...m })) })); }
+  function withSecrets() { return withManaged().map(c => ({ ...c, models: c.models.map(m => ({ ...m })) })); }
   return { list, save, remove, discover, resolve, stream, withSecrets };
 }
