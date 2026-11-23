@@ -6,12 +6,12 @@ import { findFreePort } from './ports.mjs';
 const CONFIG = 'basalt_config.json';
 
 /** An old profile (an absolute path left by an earlier build) is replaced; one that still points at a config stays. */
-function profileWorks(file, installRoot) {
+function profileWorks(file, roots) {
   try {
     const profile = JSON.parse(readFileSync(file, 'utf8'));
-    const config = isAbsolute(profile.config) ? profile.config : join(installRoot, String(profile.config));
-    const inside = relative(installRoot, config);
-    return !inside.startsWith('..') && !isAbsolute(inside) && existsSync(config);
+    const config = isAbsolute(profile.config) ? profile.config : join(roots[0], String(profile.config));
+    return roots.some(root => { const inside = relative(root, config); return !inside.startsWith('..') && !isAbsolute(inside); }) &&
+      existsSync(config);
   } catch { return false; }
 }
 
@@ -23,7 +23,7 @@ function profileWorks(file, installRoot) {
  */
 export async function ensureBasaltProfile({ installRoot, dataDir }) {
   const installed = join(installRoot, 'basalt-local.json');
-  if (existsSync(installed) && profileWorks(installed, installRoot)) return installed;
+  if (existsSync(installed) && profileWorks(installed, [installRoot, dataDir])) return installed;
   if (!existsSync(join(installRoot, 'basalt', CONFIG))) return null;   // this build ships no engine
   const port = await findFreePort(0);          // any port free on this machine, never one baked at build time
   const profile = { config: `basalt/${CONFIG}`, port, release: 'basalt', python: 'control/python/python.exe' };
