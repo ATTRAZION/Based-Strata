@@ -63,20 +63,22 @@ cd app/desktop && npm ci && npm run build
 ```
 
 `stage-basalt.py` копирует распакованный релиз Basalt (`bin/`, `serve/`, `tools/`, `data/`) и **профиль**
-`basalt_config.json` в `app/desktop/src-tauri/resources/basalt`. `resources/basalt-local.json` не содержит
-абсолютных путей и переносится вместе с установкой:
+`basalt_config.json` в `app/desktop/src-tauri/resources/basalt`. `basalt-local.json` установщик больше не несёт:
+приложение создаёт его при первом запуске (`app/host/server/basalt-profile.mjs`) со свободным портом этой машины и
+только относительными путями внутри установки:
 
 ```json
-{ "config": "basalt/basalt_config.json", "port": 18512, "release": "basalt", "python": "control/python/python.exe" }
+{ "config": "basalt/basalt_config.json", "port": 50856, "release": "basalt", "python": "control/python/python.exe" }
 ```
 
-Путь к `.basalt`-пакету задаётся при стейджинге: `--model` (или `STRATA_BASALT_MODEL`). Без `--model` берётся
-путь из исходного профиля, разрешённый относительно его папки, — веса моделей в установщик не входят. Если
-положить пакет внутрь релиза, путь станет относительным и тоже переедет с установкой. Путь к релизу и профилю
-можно передать и переменными окружения (`STRATA_BASALT_SRC`, `STRATA_BASALT_CONFIG`, `STRATA_BASALT_MODEL`) или
-из `app/desktop`: `npm run stage:basalt -- --src ... --config ... --model ...`. Порт managed-сервера по умолчанию
-18512 (`--port` или `STRATA_BASALT_PORT`). Проверка застейдженного — `python app/desktop/scripts/stage-basalt.py --check`;
-она же отказывается принимать профиль с абсолютным `config`.
+Старый профиль с абсолютным `config` (от прежних сборок) при запуске заменяется на такой же относительный. Если
+папка установки только для чтения (Program Files), профиль ложится рядом с данными пользователя. Путь к
+`.basalt`-пакету задаётся при стейджинге: `--model` (или `STRATA_BASALT_MODEL`); без `--model` берётся путь из
+исходного профиля, разрешённый относительно его папки. Веса моделей в установщик не входят — это единственный
+путь, который может остаться абсолютным; если положить пакет внутрь релиза, он станет относительным и переедет
+с установкой. Пути к релизу и профилю можно передать переменными окружения (`STRATA_BASALT_SRC`,
+`STRATA_BASALT_CONFIG`, `STRATA_BASALT_MODEL`) или из `app/desktop`: `npm run stage:basalt -- --src ... --config ... --model ...`.
+Проверка застейдженного — `python app/desktop/scripts/stage-basalt.py --check`.
 
 Вся сборка одной строкой (пути к Basalt и Harness — свои):
 

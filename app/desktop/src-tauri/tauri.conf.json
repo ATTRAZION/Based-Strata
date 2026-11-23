@@ -38,7 +38,6 @@
       "resources/control": "control",
       "resources/harness": "harness",
       "resources/basalt": "basalt",
-      "resources/basalt-local.json": "basalt-local.json",
       "resources/engine-bundle": "engine-bundle"
     },
     "linux": {

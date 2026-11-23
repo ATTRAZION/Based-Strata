@@ -58,20 +58,22 @@ cd app/desktop && npm ci && npm run build
 ```
 
 `stage-basalt.py` copies the unpacked Basalt release (`bin/`, `serve/`, `tools/`, `data/`) and the **profile**
-`basalt_config.json` into `app/desktop/src-tauri/resources/basalt`. `resources/basalt-local.json` names no
-absolute path and travels with the install:
+`basalt_config.json` into `app/desktop/src-tauri/resources/basalt`. The installer no longer carries a
+`basalt-local.json`: the app writes one on first start (`app/host/server/basalt-profile.mjs`), with a port free on
+that machine and only paths inside the install:
 
 ```json
-{ "config": "basalt/basalt_config.json", "port": 18512, "release": "basalt", "python": "control/python/python.exe" }
+{ "config": "basalt/basalt_config.json", "port": 50856, "release": "basalt", "python": "control/python/python.exe" }
 ```
 
-The `.basalt` package path is chosen at staging time: `--model` (or `STRATA_BASALT_MODEL`). Without it, the path
-from the source profile is resolved against that profile's folder; model weights are not part of the installer.
-A package placed inside the release is stored relative and travels too. The release and profile paths also come
-from `STRATA_BASALT_SRC` / `STRATA_BASALT_CONFIG` / `STRATA_BASALT_MODEL`, or run it from `app/desktop` as
-`npm run stage:basalt -- --src ... --config ... --model ...`. The managed server's port defaults to 18512
-(`--port` or `STRATA_BASALT_PORT`). `python app/desktop/scripts/stage-basalt.py --check` verifies a stage and
-rejects a profile whose `config` is absolute.
+An older profile with an absolute `config` is replaced at start with such a relative one. When the install folder
+is read-only (Program Files), the profile is kept with the user's data. The `.basalt` package path is chosen at
+staging time: `--model` (or `STRATA_BASALT_MODEL`); without it, the path from the source profile is resolved
+against that profile's folder. Model weights are not part of the installer, so that is the one path that may stay
+absolute; a package placed inside the release is stored relative and travels too. The release and profile paths
+also come from `STRATA_BASALT_SRC` / `STRATA_BASALT_CONFIG` / `STRATA_BASALT_MODEL`, or run it from `app/desktop`
+as `npm run stage:basalt -- --src ... --config ... --model ...`. `python app/desktop/scripts/stage-basalt.py --check`
+verifies a stage.
 
 The whole build on one line (use your own Basalt and Harness paths):
 

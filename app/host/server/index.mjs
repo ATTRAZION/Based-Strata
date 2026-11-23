@@ -77,6 +77,7 @@ import { createImageModels } from './image-models.mjs';
 import { createRuntimeModels } from './runtime-models.mjs';
 import { createNativeControl } from './native-control.mjs';
 import { BASALT_ID, createBasaltRuntime } from './basalt-runtime.mjs';
+import { ensureBasaltProfile } from './basalt-profile.mjs';
 import { nativeUnloadPlan } from './storage-check.mjs';
 import { installBundledEngine, cleanupAfterInstall } from './bundled-engine.mjs';
 import { systemLocale } from './region.mjs';
@@ -130,8 +131,9 @@ const hub = new EventHub();
 /** The chats, as files in the profile's data folder (chat-store.mjs). */
 const chatStore = createChatStore({ dir: store.DATA_DIR, privateDir: makePrivateDir });
 const helperRecords = createHelperRecords(chatStore.root);
-const basalt = createBasaltRuntime({
-  installFile: resolve(ROOT, '..', 'basalt-local.json'), dataDir: store.DATA_DIR,
+const basaltProfile = await ensureBasaltProfile({ installRoot: resolve(ROOT, '..'), dataDir: store.DATA_DIR });
+const basalt = basaltProfile && createBasaltRuntime({
+  installFile: basaltProfile, dataDir: store.DATA_DIR,
   strataInUse: () => agent.status().activeTurns > 0 || native.state().jobs.some(j => j.state === 'running') ||
     serving.state().requests.some(r => r.state === 'queued' || r.state === 'generating'),
   releaseStrata: async () => {
