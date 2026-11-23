@@ -31,8 +31,14 @@ npm run typecheck      # tsc --noEmit
 node --test --test-timeout=180000 tests/basalt-monitor.test.mjs tests/no-model-chat.test.mjs tests/chat-shortcuts.test.mjs tests/runtime-models.test.mjs
 ```
 
-Хост подхватывает управляемый профиль Basalt из `basalt-local.json` рядом с папкой `host`: путь к пакету
-`.basalt`, конфиг, порт и путь к Python. Ключ `/metrics` создаётся при старте и в настройки не пишется;
+Хост подхватывает управляемый профиль Basalt из `basalt-local.json` рядом с папкой `host` (файл не хранится в репозитории: пути к модели и Python у каждой машины свои):
+
+```json
+{ "config": "../../basalt_config.json", "port": 18511, "release": "../../basalt-v0.5.6-windows-x64", "python": "../../src/.venv/Scripts/python.exe" }
+```
+
+`config` — профиль Basalt с одним `.basalt`-пакетом, `release` — распакованный архив движка, `python` — интерпретатор для `basalt-server.py`.
+В архиве 0.5.6 для Windows нет CUDA-библиотек, без которых `binasalt.exe` завершается с `0xC0000135`: положите рядом с ним `cublas64_13.dll`, `cublasLt64_13.dll` и `cudart64_13.dll` (они есть в архиве 0.4.1 или в CUDA 13). Ключ `/metrics` создаётся при старте и в настройки не пишется;
 снаружи `/metrics` остаётся закрыт (401) — читает его только сам хост. Логи управляемого сервера —
 `managed-basalt.log` в папке профиля Strata.
 
